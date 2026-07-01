@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>60.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>UKG Annual Review Summary</masterLabel>
+    <description>Displays a summary of time entries for a single employee's annual review period, calculated from Hire Date Anniversary.</description>
+    
+    <targets>
+        <!-- Must be on the Contact Record Page -->
+        <target>lightning__RecordPage</target>
+    </targets>
+    
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <supportedFormFactors>
+                <supportedFormFactor type="Large" />
+                <supportedFormFactor type="Small" />
+            </supportedFormFactors>
+             <!-- Important: Component requires the Contact record context -->
+            <objects>
+                <object>Contact</object>
+            </objects>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

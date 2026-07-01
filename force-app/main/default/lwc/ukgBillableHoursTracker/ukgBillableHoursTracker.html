@@ -1,0 +1,211 @@
+<!--
+  ukgBillableHoursTracker.html
+  
+  The HTML template for the LWC. It displays the UKG billable hours summary in a responsive
+  Lightning Data Table.
+-->
+<template>
+    
+    <lightning-card
+        title="HW2 / 1099 Billable Hours (Last 5 Weeks)"
+        icon-name="utility:date_input">
+
+
+        <!-- ACTION SLOT: Refresh Button -->
+        <div slot="actions">
+            <lightning-button-icon
+                icon-name="utility:refresh"
+                alternative-text="Refresh Data"
+                title="Refresh Data"
+                onclick={handleRefresh}
+                class="slds-m-left_x-small">
+            </lightning-button-icon>
+        </div>
+
+        <div class="slds-p-horizontal_small slds-p-vertical_x-small">
+
+            <!-- Loading Spinner -->
+            <template if:true={isLoading}>
+                <div class="slds-is-relative slds-align_absolute-center" style="height:5rem">
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                </div>
+            </template>
+            
+            <!-- Display Data Table -->
+            <template if:true={showTable}>
+                <!-- Changed to slds-scrollable for robust vertical/horizontal scrolling -->
+                <div class="slds-scrollable slds-p-bottom_large" style="max-height: 25rem;">
+                    <table class="slds-table slds-table_bordered slds-table_col-bordered slds-table_fixed-layout slds-no-row-hover slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <template if:false={recordId}>
+                                    <th scope="col" style="width: 4.5rem;" class="slds-text-align_center">
+                                        <div class="slds-truncate" title="Link">Link</div>
+                                    </th>
+                                </template>
+                                <th scope="col" style="width: 12rem;">
+                                    <div class="slds-truncate" title="Employee Name">Employee Name</div>
+                                </th>
+                                <template for:each={formattedWeekHeaders} for:item="header">
+                                    <th key={header.date} scope="col" style="width: 8rem;" class="slds-text-align_center">
+                                        <div class="slds-truncate" title={header.formatted}>{header.formatted}</div>
+                                    </th>
+                                </template>
+                                <th scope="col" style="width: 9rem;" class="slds-text-align_center">
+                                    <div class="slds-truncate" title="Total Billable">Total Billable</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={benchSummaries} for:item="summary">
+                                <tr key={summary.id} class="slds-hint-parent">
+                                    <template if:false={recordId}>
+                                        <td class="slds-text-align_center">
+                                            <template if:true={summary.contactIconLink}>
+                                                <a href={summary.contactIconLink} target="_blank" title="View Contact Record">View</a>
+                                            </template>
+                                        </td>
+                                    </template>
+                                    <td>
+                                        <div class="slds-truncate slds-text-title_bold" title={summary.contactName}>{summary.contactName}</div>
+                                    </td>
+                                    <!-- Week 1 -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w1Hours}</div>
+                                        <template if:true={summary.hasW1Segments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.w1_24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="24-Hour On-Call Shifts">
+                                                        24h: {summary.w1_24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.w1_15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="15-Hour On-Call Shifts">
+                                                        15h: {summary.w1_15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <!-- Week 2 -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w2Hours}</div>
+                                        <template if:true={summary.hasW2Segments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.w2_24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="24-Hour On-Call Shifts">
+                                                        24h: {summary.w2_24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.w2_15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="15-Hour On-Call Shifts">
+                                                        15h: {summary.w2_15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <!-- Week 3 -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w3Hours}</div>
+                                        <template if:true={summary.hasW3Segments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.w3_24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="24-Hour On-Call Shifts">
+                                                        24h: {summary.w3_24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.w3_15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="15-Hour On-Call Shifts">
+                                                        15h: {summary.w3_15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <!-- Week 4 -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w4Hours}</div>
+                                        <template if:true={summary.hasW4Segments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.w4_24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="24-Hour On-Call Shifts">
+                                                        24h: {summary.w4_24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.w4_15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="15-Hour On-Call Shifts">
+                                                        15h: {summary.w4_15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <!-- Week 5 -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w5Hours}</div>
+                                        <template if:true={summary.hasW5Segments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.w5_24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="24-Hour On-Call Shifts">
+                                                        24h: {summary.w5_24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.w5_15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="15-Hour On-Call Shifts">
+                                                        15h: {summary.w5_15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <!-- Total Column -->
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-heading_small slds-text-color_success slds-text-title_bold">{summary.total5WeekHours}</div>
+                                        <template if:true={summary.hasTotalSegments}>
+                                            <div class="slds-m-top_xx-small slds-grid slds-grid_align-center slds-gutters_xxx-small">
+                                                <template if:true={summary.total24hSegments}>
+                                                    <span class="slds-badge custom-badge badge-24" title="Total 24-Hour On-Call Shifts">
+                                                        24h: {summary.total24hSegments}
+                                                    </span>
+                                                </template>
+                                                <template if:true={summary.total15hSegments}>
+                                                    <span class="slds-badge custom-badge badge-15" title="Total 15-Hour On-Call Shifts">
+                                                        15h: {summary.total15hSegments}
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <!-- No Data Message -->
+            <template if:true={showNoData}>
+                <div class="slds-box slds-theme_shade">
+                    <p class="slds-text-align_center">
+                        <lightning-icon icon-name="utility:info" alternative-text="Info" size="small"></lightning-icon>
+                        No billable hours data found in UKG for the company in the report's time frame.
+                    </p>
+                </div>
+            </template>
+
+            <!-- Error Message -->
+            <template if:true={error}>
+                <div class="slds-box slds-theme_error slds-m-top_small">
+                    <p>
+                        <lightning-icon icon-name="utility:error" alternative-text="Error" variant="inverse" size="small"></lightning-icon>
+                        <span class="slds-m-left_small">Failed to load UKG data: {error.body.message}</span>
+                    </p>
+                    <p class="slds-text-body_small slds-m-top_x-small">
+                        Review the error message above for specific UKG API feedback.
+                    </p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

@@ -1,0 +1,6 @@
+/* * This CSS targets the headers of the weekly and total columns (columns 3 onwards) 
+ * to enforce center alignment for the column labels.
+ */
+.slds-table thead tr th:nth-child(n+3) .slds-truncate {
+    text-align: center;
+}

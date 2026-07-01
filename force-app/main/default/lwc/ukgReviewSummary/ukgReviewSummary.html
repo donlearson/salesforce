@@ -1,0 +1,129 @@
+<template>
+    
+    <lightning-card
+        title="Annual Review Project Summary"
+        icon-name="utility:date_input">
+
+        <div slot="actions">
+            <lightning-button-icon
+                icon-name="utility:refresh"
+                alternative-text="Refresh Data"
+                title="Refresh Data"
+                onclick={handleRefresh}
+                class="slds-m-left_x-small">
+            </lightning-button-icon>
+            
+            
+        </div>
+
+        <div class="slds-p-horizontal_small slds-p-vertical_x-small">
+
+            <!-- Loading Spinner -->
+            <template if:true={isLoading}>
+                <div class="slds-is-relative slds-align_absolute-center" style="height:5rem">
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                </div>
+            </template>
+            
+            <!-- --- DEBUG PANEL --- -->
+            <template if:true={showDebug}>
+                <div class="slds-box slds-theme_default slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">Raw Data Debug</h3>
+                    <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.75rem; max-height: 10rem; overflow-y: auto; background: #f0f0f0; padding: 0.5rem; border-radius: 4px;">
+                        Billable Projects: {debugBillable}
+                        Non-Billable Items: {debugNonBillable}
+                        On-Call Units: {debugOnCall}
+                    </pre>
+                </div>
+            </template>
+            <!-- --- END DEBUG PANEL --- -->
+
+            <!-- --- MAIN DATA DISPLAY SCROLLABLE GUARD --- -->
+            <div class="slds-scrollable_y" style="max-height: 40rem;">
+                <template if:true={summary}>
+                    
+                    <!-- Review Period Header -->
+                    <p class="slds-text-heading_small slds-m-bottom_small">
+                        Review Period: <strong>{summary.reviewPeriod}</strong>
+                    </p>
+                    
+                    <!-- --- Billable Projects Summary --- -->
+                    <template if:true={summary.billableProjects.length}>
+                        <h3 class="slds-text-heading_medium slds-m-top_small slds-m-bottom_x-small">Billable Projects</h3>
+                        <lightning-datatable
+                            key-field="id" 
+                            data={summary.billableProjects}
+                            columns={projectColumns}
+                            hide-checkbox-column="true">
+                        </lightning-datatable>
+                        <p class="slds-text-align_right slds-m-top_x-small slds-text-heading_small slds-text-color_success">
+                            Total Billable Hours: <strong>{totalBillableHours}</strong>
+                        </p>
+                    </template>
+                    <!-- Fallback if Billable list is empty but summary exists -->
+                    <template if:false={summary.billableProjects.length}>
+                        <div class="slds-m-top_small slds-p-left_x-small">
+                            <h3 class="slds-text-heading_medium slds-m-top_small slds-m-bottom_x-small">Billable Projects</h3>
+                            <p class="slds-text-body_regular slds-text-color_weak">No billable projects found for this period.</p>
+                        </div>
+                    </template>
+
+
+                    <!-- --- Non-Billable Summary --- -->
+                    <template if:true={summary.nonBillableItems.length}>
+                        <h3 class="slds-text-heading_medium slds-m-top_large slds-m-bottom_x-small">Non-Billable Activities</h3>
+                        <lightning-datatable
+                            key-field="id" 
+                            data={summary.nonBillableItems}
+                            columns={projectColumns}
+                            hide-checkbox-column="true">
+                        </lightning-datatable>
+                        <p class="slds-text-align_right slds-m-top_x-small slds-text-heading_small">
+                            Total Non-Billable Hours: <strong>{totalNonBillableHours}</strong>
+                        </p>
+                    </template>
+                    
+                    <!-- --- On-Call Summary --- -->
+                    <template if:true={summary.onCallUnits.length}>
+                        <h3 class="slds-text-heading_medium slds-m-top_large slds-m-bottom_x-small">On-Call Shifts</h3>
+                        <lightning-datatable
+                            key-field="id" 
+                            data={summary.onCallUnits}
+                            columns={projectColumns}
+                            hide-checkbox-column="true">
+                        </lightning-datatable>
+                        <p class="slds-text-align_right slds-m-top_x-small slds-text-heading_small">
+                            Total On-Call Units: <strong>{totalOnCallUnits}</strong>
+                        </p>
+                    </template>
+
+                    <!-- No Data Message -->
+                    <template if:false={isDataAvailable}>
+                        <div class="slds-box slds-theme_shade slds-m-top_large">
+                            <p class="slds-text-align_center">
+                                <lightning-icon icon-name="utility:info" alternative-text="Info" size="small"></lightning-icon>
+                                No time entries found in UKG for the current review period ({summary.reviewPeriod}).
+                            </p>
+                        </div>
+                    </template>
+
+                </template>
+            </div>
+            <!-- --- END MAIN DATA DISPLAY SCROLLABLE GUARD --- -->
+
+
+            <!-- Error Message -->
+            <template if:true={error}>
+                <div class="slds-box slds-theme_error slds-m-top_small">
+                    <p>
+                        <lightning-icon icon-name="utility:error" alternative-text="Error" variant="inverse" size="small"></lightning-icon>
+                        <span class="slds-m-left_small">Failed to load UKG data: {error.body.message}</span>
+                    </p>
+                    <p class="slds-text-body_small slds-m-top_x-small">
+                        Please check the Contact's **Hire Date Anniversary** and **UKG ID** fields.
+                    </p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>
