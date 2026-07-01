@@ -32,14 +32,64 @@
             
             <!-- Display Data Table -->
             <template if:true={showTable}>
-                <!-- Added slds-scrollable_x for the wide 7-column table -->
-                <div class="slds-scrollable_x" style="max-height: 25rem;">
-                    <lightning-datatable
-                        key-field="id" 
-                        data={benchSummaries}
-                        columns={columns}
-                        hide-checkbox-column="true">
-                    </lightning-datatable>
+                <!-- Changed to slds-scrollable for robust vertical/horizontal scrolling -->
+                <div class="slds-scrollable slds-p-bottom_large" style="max-height: 25rem;">
+                    <table class="slds-table slds-table_bordered slds-table_col-bordered slds-table_fixed-layout slds-no-row-hover slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <template if:false={recordId}>
+                                    <th scope="col" style="width: 4.5rem;" class="slds-text-align_center">
+                                        <div class="slds-truncate" title="Link">Link</div>
+                                    </th>
+                                </template>
+                                <th scope="col" style="width: 12rem;">
+                                    <div class="slds-truncate" title="Employee Name">Employee Name</div>
+                                </th>
+                                <template for:each={formattedWeekHeaders} for:item="header">
+                                    <th key={header.date} scope="col" style="width: 8rem;" class="slds-text-align_center">
+                                        <div class="slds-truncate" title={header.formatted}>{header.formatted}</div>
+                                    </th>
+                                </template>
+                                <th scope="col" style="width: 9rem;" class="slds-text-align_center">
+                                    <div class="slds-truncate" title="Total (5 Weeks)">Total (5 Weeks)</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={benchSummaries} for:item="summary">
+                                <tr key={summary.id} class="slds-hint-parent">
+                                    <template if:false={recordId}>
+                                        <td class="slds-text-align_center">
+                                            <template if:true={summary.contactIconLink}>
+                                                <a href={summary.contactIconLink} target="_blank" title="View Contact Record">View</a>
+                                            </template>
+                                        </td>
+                                    </template>
+                                    <td>
+                                        <div class="slds-truncate slds-text-title_bold" title={summary.contactName}>{summary.contactName}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w1Hours}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w2Hours}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w3Hours}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w4Hours}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-body_regular">{summary.w5Hours}</div>
+                                    </td>
+                                    <td class="slds-text-align_center">
+                                        <div class="slds-text-heading_small slds-text-color_success slds-text-title_bold">{summary.total5WeekHours}</div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
                 </div>
             </template>
 
