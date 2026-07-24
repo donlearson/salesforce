@@ -48,7 +48,23 @@ public with sharing class UkgBillableHoursW2Controller {
         @AuraEnabled public Decimal w5_24hSegments { get; set; }
         @AuraEnabled public Decimal total15hSegments { get; set; }
         @AuraEnabled public Decimal total24hSegments { get; set; }
-        
+
+        // Time Off (APL = All Purpose Leave, activity code 405; Holiday = activity code 404).
+        // Reported separately from w1Hours..w5Hours (billable/worked hours) so time off never
+        // inflates billable totals - it's used only for utilization math on the client.
+        @AuraEnabled public Decimal w1_aplHours { get; set; }
+        @AuraEnabled public Decimal w2_aplHours { get; set; }
+        @AuraEnabled public Decimal w3_aplHours { get; set; }
+        @AuraEnabled public Decimal w4_aplHours { get; set; }
+        @AuraEnabled public Decimal w5_aplHours { get; set; }
+        @AuraEnabled public Decimal total5WeekAplHours { get; set; }
+        @AuraEnabled public Decimal w1_holidayHours { get; set; }
+        @AuraEnabled public Decimal w2_holidayHours { get; set; }
+        @AuraEnabled public Decimal w3_holidayHours { get; set; }
+        @AuraEnabled public Decimal w4_holidayHours { get; set; }
+        @AuraEnabled public Decimal w5_holidayHours { get; set; }
+        @AuraEnabled public Decimal total5WeekHolidayHours { get; set; }
+
         public UserWeeklyBillableSummary() {
             w1Hours = 0.0; w2Hours = 0.0; w3Hours = 0.0; w4Hours = 0.0; w5Hours = 0.0; total5WeekHours = 0.0;
             w1_15hSegments = 0.0; w1_24hSegments = 0.0;
@@ -57,6 +73,8 @@ public with sharing class UkgBillableHoursW2Controller {
             w4_15hSegments = 0.0; w4_24hSegments = 0.0;
             w5_15hSegments = 0.0; w5_24hSegments = 0.0;
             total15hSegments = 0.0; total24hSegments = 0.0;
+            w1_aplHours = 0.0; w2_aplHours = 0.0; w3_aplHours = 0.0; w4_aplHours = 0.0; w5_aplHours = 0.0; total5WeekAplHours = 0.0;
+            w1_holidayHours = 0.0; w2_holidayHours = 0.0; w3_holidayHours = 0.0; w4_holidayHours = 0.0; w5_holidayHours = 0.0; total5WeekHolidayHours = 0.0;
         }
     }
 
@@ -271,6 +289,22 @@ public with sharing class UkgBillableHoursW2Controller {
     }
 
     /**
+     * Safely parses a trimmed CSV cell into a Decimal, handling blanks/dashes/bad data as 0.
+     */
+    private static Decimal parseDecimalSafe(String rawValue) {
+        String trimmed = rawValue != null ? rawValue.trim() : '';
+        if (String.isBlank(trimmed) || trimmed == '-') {
+            return 0.0;
+        }
+        try {
+            return Decimal.valueOf(trimmed);
+        } catch (TypeException te) {
+            System.debug('Warning: Skipping invalid numeric format: ' + trimmed);
+            return 0.0;
+        }
+    }
+
+    /**
      * Parses the CSV response string and groups billable hours data by user over the 5 fixed weeks.
      */
     private static BenchTimeWrapper groupBenchTime(String csvData) {
@@ -285,6 +319,8 @@ public with sharing class UkgBillableHoursW2Controller {
         Map<String, Map<String, Decimal>> rawHoursData = new Map<String, Map<String, Decimal>>();
         Map<String, Map<String, Decimal>> raw15hSegmentsData = new Map<String, Map<String, Decimal>>();
         Map<String, Map<String, Decimal>> raw24hSegmentsData = new Map<String, Map<String, Decimal>>();
+        Map<String, Map<String, Decimal>> rawAplHoursData = new Map<String, Map<String, Decimal>>();
+        Map<String, Map<String, Decimal>> rawHolidayHoursData = new Map<String, Map<String, Decimal>>();
         Map<String, String> userToEmployeeIdMap = new Map<String, String>();
         Set<String> employeeIds = new Set<String>();
 
@@ -377,6 +413,33 @@ public with sharing class UkgBillableHoursW2Controller {
                             weekMap.put(weekEndDate.format(), currentHours + hours);
                         }
 
+                        // Time Off columns: APL (index 7) then Holiday (index 8), appended after
+                        // Activity Code. Parsed independently of the activity code branching above -
+                        // guarded by values.size() so this stays backward-compatible until the UKG
+                        // report is updated to include them.
+                        if (values.size() >= 8) {
+                            Decimal aplHours = parseDecimalSafe(values[7]);
+                            if (aplHours != 0) {
+                                if (!rawAplHoursData.containsKey(fullName)) {
+                                    rawAplHoursData.put(fullName, new Map<String, Decimal>());
+                                }
+                                Map<String, Decimal> aplWeekMap = rawAplHoursData.get(fullName);
+                                Decimal currentApl = aplWeekMap.containsKey(weekEndDate.format()) ? aplWeekMap.get(weekEndDate.format()) : 0.0;
+                                aplWeekMap.put(weekEndDate.format(), currentApl + aplHours);
+                            }
+                        }
+                        if (values.size() >= 9) {
+                            Decimal holidayHours = parseDecimalSafe(values[8]);
+                            if (holidayHours != 0) {
+                                if (!rawHolidayHoursData.containsKey(fullName)) {
+                                    rawHolidayHoursData.put(fullName, new Map<String, Decimal>());
+                                }
+                                Map<String, Decimal> holidayWeekMap = rawHolidayHoursData.get(fullName);
+                                Decimal currentHoliday = holidayWeekMap.containsKey(weekEndDate.format()) ? holidayWeekMap.get(weekEndDate.format()) : 0.0;
+                                holidayWeekMap.put(weekEndDate.format(), currentHoliday + holidayHours);
+                            }
+                        }
+
                     } catch (Exception e) {
                         System.debug('Error parsing hours/date/ID for: ' + fullName + ' - ' + e.getMessage() + ' - Line: ' + line);
                     }
@@ -421,51 +484,71 @@ public with sharing class UkgBillableHoursW2Controller {
              Map<String, Decimal> userHours = rawHoursData.containsKey(userName) ? rawHoursData.get(userName) : new Map<String, Decimal>();
              Map<String, Decimal> user15h = raw15hSegmentsData.containsKey(userName) ? raw15hSegmentsData.get(userName) : new Map<String, Integer>();
              Map<String, Decimal> user24h = raw24hSegmentsData.containsKey(userName) ? raw24hSegmentsData.get(userName) : new Map<String, Integer>();
+             Map<String, Decimal> userApl = rawAplHoursData.containsKey(userName) ? rawAplHoursData.get(userName) : new Map<String, Decimal>();
+             Map<String, Decimal> userHoliday = rawHolidayHoursData.containsKey(userName) ? rawHolidayHoursData.get(userName) : new Map<String, Decimal>();
 
              Decimal totalHours = 0.0;
              Decimal total15 = 0.0;
              Decimal total24 = 0.0;
-             
+             Decimal totalApl = 0.0;
+             Decimal totalHoliday = 0.0;
+
              for (Integer i = 0; i < 5; i++) {
-                 String targetDateStr = targetWeekEnds[i].format(); 
+                 String targetDateStr = targetWeekEnds[i].format();
                  Decimal hours = userHours.containsKey(targetDateStr) ? userHours.get(targetDateStr) : 0.0;
                  Decimal count15 = user15h.containsKey(targetDateStr) ? user15h.get(targetDateStr) : 0;
                  Decimal count24 = user24h.containsKey(targetDateStr) ? user24h.get(targetDateStr) : 0;
-                 
+                 Decimal aplHours = userApl.containsKey(targetDateStr) ? userApl.get(targetDateStr) : 0.0;
+                 Decimal holidayHours = userHoliday.containsKey(targetDateStr) ? userHoliday.get(targetDateStr) : 0.0;
+
                  totalHours += hours;
                  total15 += count15;
                  total24 += count24;
- 
+                 totalApl += aplHours;
+                 totalHoliday += holidayHours;
+
                  if (i == 0) {
                      summary.w1Hours = hours;
                      summary.w1_15hSegments = count15;
                      summary.w1_24hSegments = count24;
+                     summary.w1_aplHours = aplHours;
+                     summary.w1_holidayHours = holidayHours;
                  }
                  if (i == 1) {
                      summary.w2Hours = hours;
                      summary.w2_15hSegments = count15;
                      summary.w2_24hSegments = count24;
+                     summary.w2_aplHours = aplHours;
+                     summary.w2_holidayHours = holidayHours;
                  }
                  if (i == 2) {
                      summary.w3Hours = hours;
                      summary.w3_15hSegments = count15;
                      summary.w3_24hSegments = count24;
+                     summary.w3_aplHours = aplHours;
+                     summary.w3_holidayHours = holidayHours;
                  }
                  if (i == 3) {
                      summary.w4Hours = hours;
                      summary.w4_15hSegments = count15;
                      summary.w4_24hSegments = count24;
+                     summary.w4_aplHours = aplHours;
+                     summary.w4_holidayHours = holidayHours;
                  }
                  if (i == 4) {
                      summary.w5Hours = hours;
                      summary.w5_15hSegments = count15;
                      summary.w5_24hSegments = count24;
+                     summary.w5_aplHours = aplHours;
+                     summary.w5_holidayHours = holidayHours;
                  }
              }
-             
+
              summary.total5WeekHours = totalHours;
              summary.total15hSegments = total15;
              summary.total24hSegments = total24;
+             summary.total5WeekAplHours = totalApl;
+             summary.total5WeekHolidayHours = totalHoliday;
              finalSummaryList.add(summary);
          }
         

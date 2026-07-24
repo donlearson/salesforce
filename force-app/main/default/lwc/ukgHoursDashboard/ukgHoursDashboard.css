@@ -1,0 +1,54 @@
+/* Header centering for weekly/total columns, matching the standalone trackers */
+.slds-table thead tr th:nth-child(n+3) .slds-truncate {
+    text-align: center;
+}
+
+/* Custom badges/pills for on-call segment tracking (verbatim from ukgBillableHoursW2Tracker.css) */
+.custom-badge {
+    font-size: 0.65rem !important;
+    padding: 0.15rem 0.35rem !important;
+    line-height: 1 !important;
+    border-radius: 4px !important;
+    font-weight: bold !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent !important;
+}
+
+.badge-24 {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+.badge-15 {
+    background-color: #f3e8ff !important;
+    color: #6b21a8 !important;
+    border-color: #e9d5ff !important;
+}
+
+/* KPI tiles - no SLDS-native stat-tile component exists, so this is custom */
+.kpi-tile {
+    padding: 0.75rem 1rem;
+    height: 100%;
+}
+
+.kpi-tile p.slds-text-heading_large {
+    margin: 0.25rem 0;
+}
+
+.search-box {
+    min-width: 16rem;
+}
+
+/* Column-total footer row on each tab's table */
+.totals-row {
+    background-color: #f3f3f3 !important;
+    border-top: 2px solid #dddbda !important;
+}
+
+/* PW2 rows under 100% utilization for the current week */
+.low-utilization-row td {
+    background-color: #fef3c7 !important;
+}

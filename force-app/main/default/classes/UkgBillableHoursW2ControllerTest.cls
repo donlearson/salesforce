@@ -19,10 +19,12 @@ private class UkgBillableHoursW2ControllerTest {
                 Date sat = today.addDays(diff == 6 ? 0 : -(diff + 1));
                 String satStr = DateTime.newInstance(sat, Time.newInstance(0,0,0,0)).format('MM/dd/yyyy');
                 
-                String csv = 'L,F,Start,End,H,ID,Code\n' +
-                             'Alberts,Tom,01/01/24,' + satStr + ',35.5,EMP001,100\n' +
-                             'Alberts,Tom,01/01/24,' + satStr + ',24.0,EMP001,177-24-OnCall\n' +
-                             'Alberts,Tom,01/01/24,' + satStr + ',15.0,EMP001,177-15-OnCall';
+                String csv = 'L,F,Start,End,H,ID,Code,APL,Holiday\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',35.5,EMP001,100,0,0\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',24.0,EMP001,177-24-OnCall,0,0\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',15.0,EMP001,177-15-OnCall,0,0\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',0,EMP001,405-APL,8.0,0\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',0,EMP001,404-Holiday,0,4.0';
                 res.setBody(csv);
                 res.setStatusCode(200);
             }
@@ -50,6 +52,10 @@ private class UkgBillableHoursW2ControllerTest {
         System.assertEquals(15.0, sum.total15hSegments, 'Expected total 15h segments total');
         System.assertEquals(24.0, sum.total24hSegments, 'Expected total 24h segments total');
         System.assertEquals(35.5, sum.total5WeekHours, 'Expected total 5 week hours to exclude on-call rows');
+        System.assertEquals(8.0, sum.w1_aplHours, 'Expected APL hours parsed from the appended APL column');
+        System.assertEquals(8.0, sum.total5WeekAplHours, 'Expected total APL hours');
+        System.assertEquals(4.0, sum.w1_holidayHours, 'Expected Holiday hours parsed from the appended Holiday column');
+        System.assertEquals(4.0, sum.total5WeekHolidayHours, 'Expected total Holiday hours');
     }
 
     @isTest
