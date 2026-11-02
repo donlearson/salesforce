@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <icon>cirrusadv__Cirrus_Insight/cirrusadv__Cirrus_Insight_Icon.png</icon>
+    <label>Cirrus Analytics Setup</label>
+    <motif>Custom108: TV Widescreen</motif>
+    <page>cirrusadv__Configure</page>
+</CustomTab>

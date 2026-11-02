@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSetGroup xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>This is the group for all of the permission sets for the Consulting Director positions.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Consulting Director Access</label>
+    <permissionSets>Consulting_Dashboard_Directors</permissionSets>
+    <permissionSets>Director_Dashboard_Access</permissionSets>
+    <permissionSets>Team_Lead_Core</permissionSets>
+    <permissionSets>Team_Lead_MME_Email</permissionSets>
+    <status>Updated</status>
+</PermissionSetGroup>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types><members>Consulting_Director_Access</members><members>Consulting_SCM_Access</members><name>PermissionSetGroup</name></types>
+    <version>65.0</version>
+</Package>

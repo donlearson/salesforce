@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#0070D2</headerColor>
+        <logo>leadfeederapp__Leadfeeder_logo1</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
+    </brand>
+    <description>Increase your sales intelligence and source new leads by identifying the companies visiting your website, filtering based on behavior and demographics, and then creating Salesforce accounts and leads based on these web visitors.</description>
+    <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
+    <label>Leadfeeder</label>
+    <navType>Standard</navType>
+    <tabs>leadfeederapp__Web_Visitors</tabs>
+    <uiType>Lightning</uiType>
+    <utilityBar>leadfeederapp__Leadfeeder_UtilityBar</utilityBar>
+</CustomApplication>

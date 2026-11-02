@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <applicationVisibilities>
+        <application>Team_Lead_Dashboard</application>
+        <default>true</default>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <custom>true</custom>
+    <description>Thin base profile for the HPG Consulting group: page layouts and default app only. All permissions come from permission sets (Team_Lead_Core etc).</description>
+    <layoutAssignments>
+        <layout>Account-Account Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Account-HPG Account Layout</layout>
+        <recordType>Account.Customer_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Account-HPG Competitor Layout</layout>
+        <recordType>Account.Competitor_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Account-HPG Vendor Layout</layout>
+        <recordType>Account.Vendor_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Asset-Asset Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Campaign-Campaign Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contact-Contact Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contact-Contact Layout</layout>
+        <recordType>Contact.Customer_Contact_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contact-Contractor Associate Page Layout</layout>
+        <recordType>Contact.Contractor_Associate_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contact-Employee Associate Page Layout %28Team Leads%29</layout>
+        <recordType>Contact.Employee_Associate_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contact-Recruit Page Layout</layout>
+        <recordType>Contact.Recruit_Record_Type</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Contract-Contract Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Event-Event Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Goldmine_History__c-Goldmine History Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Opportunity-Opportunity Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Product2-Product Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>QuickText-Quick Text Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Associate Communication</layout>
+        <recordType>Task.Associate_Communication</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.F2F_Sales_Call</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.PS_Active_Customer</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Production_Support_Activity</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Proposal_Review</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Recruiting_Activity</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Routine_Task</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Sales_Plan</recordType>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Task-Task Layout</layout>
+        <recordType>Task.Walked_Associate_Onsite</recordType>
+    </layoutAssignments>
+    <userLicense>Salesforce</userLicense>
+</Profile>
