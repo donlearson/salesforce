@@ -1,7 +1,8 @@
 import { LightningElement } from 'lwc';
-import getPW2Entries from '@salesforce/apex/UkgBillableHoursW2Controller.getTimeEntries';
-import getHW2Entries from '@salesforce/apex/UkgBillableHoursController.getTimeEntries';
+import getAllBillableEntries from '@salesforce/apex/UkgBillableHoursW2Controller.getAllTimeEntries';
+import getMonthlyBillableEntries from '@salesforce/apex/UkgBillableHoursW2Controller.getMonthlyTimeEntries';
 import getBenchEntries from '@salesforce/apex/UkgDataController.getTimeEntries';
+import getMonthlyBenchEntries from '@salesforce/apex/UkgDataController.getMonthlyTimeEntries';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
 /**
@@ -9,15 +10,30 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
  * * Unified dashboard combining the three standalone UKG hours trackers
  * (PW2 billable, HW2/1099 billable, bench time) into one tabbed view with
  * KPI tiles, week-over-week deltas, and a bench-time alerts panel.
- * * Calls the same three existing Apex controllers in parallel and does all
- * aggregation/comparison math client-side; none of the underlying Apex was
- * modified for this component.
+ * * PW2 and HW2/1099 come from a single consolidated UKG report call
+ * (UkgBillableHoursW2Controller.getAllTimeEntries), split server-side via the
+ * report's TimesheetProfile column. Bench time remains its own separate call.
+ * This drops the dashboard from 3 Apex calls to 2, and from 6 UKG callouts
+ * (login + report x3) to 4.
  */
 export default class UkgHoursDashboard extends LightningElement {
     weekEndDates = [];
     pw2Summaries = [];
     hw2Summaries = [];
     benchSummaries = [];
+
+    // Monthly (70-day window) raw data - each associate entry carries Apex-computed
+    // Current Month / Last Month To Date / Last Month Total totals, bucketed
+    // server-side via the report's Counter Date column (the actual date the time was
+    // logged), so no client-side date-bucketing is needed here.
+    monthlyPw2Summaries = [];
+    monthlyHw2Summaries = [];
+    monthlyBenchSummaries = [];
+    // The date (yyyy-MM-dd) Apex calculated Current Month through - either the last
+    // completed Saturday, or the last day of the previous month if fewer than 7 days
+    // have elapsed in the new one. Authoritative from the server so the "(Through ...)"
+    // label always matches the actual bucket math, not a client-side re-derivation of it.
+    monthlyAsOfDate = null;
 
     isLoading = true;
     error = null;
@@ -39,21 +55,31 @@ export default class UkgHoursDashboard extends LightningElement {
         this.error = null;
 
         try {
-            const [pw2, hw2, bench] = await Promise.all([
-                getPW2Entries({ contactId: null }),
-                getHW2Entries({ contactId: null }),
-                getBenchEntries({ contactId: null })
+            const [billable, bench, monthlyBillable, monthlyBench] = await Promise.all([
+                getAllBillableEntries({ contactId: null }),
+                getBenchEntries({ contactId: null }),
+                getMonthlyBillableEntries({ contactId: null }),
+                getMonthlyBenchEntries({ contactId: null })
             ]);
 
-            this.weekEndDates = pw2.weekEndDates || [];
-            this.pw2Summaries = this.mapSummaries(pw2.summaries, true);
-            this.hw2Summaries = this.mapSummaries(hw2.summaries, true);
+            this.weekEndDates = billable.weekEndDates || [];
+            this.pw2Summaries = this.mapSummaries(billable.pw2Summaries, true);
+            this.hw2Summaries = this.mapSummaries(billable.hw2Summaries, true);
             this.benchSummaries = this.mapSummaries(bench.summaries, false);
+
+            this.monthlyPw2Summaries = monthlyBillable.pw2Summaries || [];
+            this.monthlyHw2Summaries = monthlyBillable.hw2Summaries || [];
+            this.monthlyBenchSummaries = monthlyBench.summaries || [];
+            this.monthlyAsOfDate = monthlyBillable.asOfDate || null;
         } catch (error) {
             this.error = error;
             this.pw2Summaries = [];
             this.hw2Summaries = [];
             this.benchSummaries = [];
+            this.monthlyPw2Summaries = [];
+            this.monthlyHw2Summaries = [];
+            this.monthlyBenchSummaries = [];
+            this.monthlyAsOfDate = null;
 
             const evt = new ShowToastEvent({
                 title: 'UKG Hours Dashboard Retrieval Error',
@@ -113,15 +139,15 @@ export default class UkgHoursDashboard extends LightningElement {
         return list.reduce((acc, s) => acc + (Number(s[field]) || 0), 0);
     }
 
-    computeDelta(current, prior) {
+    computeDelta(current, prior, comparisonLabel = 'last week') {
         if (!prior) {
-            return { pct: null, direction: 'flat', label: 'N/A vs last week' };
+            return { pct: null, direction: 'flat', label: `N/A vs ${comparisonLabel}` };
         }
         const pct = ((current - prior) / prior) * 100;
         return {
             pct,
             direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat',
-            label: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs last week`
+            label: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs ${comparisonLabel}`
         };
     }
 
@@ -202,19 +228,25 @@ export default class UkgHoursDashboard extends LightningElement {
     // (an accepted approximation - it undercounts anyone with zero logged hours
     // who therefore doesn't appear in the report at all).
 
-    get targetWeekMonday() {
-        // weekEndDates[0] is the most recent Saturday; Monday of that same
-        // Mon-Fri work week is 5 days earlier. Parsed the same safe way as
-        // formattedWeekHeaders below to avoid the UTC-shift bug of new Date(string).
-        const [y, m, d] = this.weekEndDates[0].split('-').map((p) => parseInt(p, 10));
+    // weekEndDateStr is the Saturday ending the work week; Monday of that same
+    // Mon-Fri work week is 5 days earlier. Parsed the same safe way as
+    // formattedWeekHeaders below to avoid the UTC-shift bug of new Date(string).
+    mondayForWeekEnd(weekEndDateStr) {
+        const [y, m, d] = weekEndDateStr.split('-').map((p) => parseInt(p, 10));
         const saturday = new Date(y, m - 1, d);
         const monday = new Date(saturday);
         monday.setDate(saturday.getDate() - 5);
         return monday;
     }
 
-    get weekdayDatesInTargetWeek() {
-        const monday = this.targetWeekMonday;
+    // Monday of the most recent (Last Week) work week - the cutoff used to decide
+    // whether a terminated associate should still count toward Last Week utilization.
+    get startOfLastWeek() {
+        return this.weekEndDates.length ? this.mondayForWeekEnd(this.weekEndDates[0]) : null;
+    }
+
+    weekdayDatesForWeekEnd(weekEndDateStr) {
+        const monday = this.mondayForWeekEnd(weekEndDateStr);
         return [0, 1, 2, 3, 4].map((offset) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + offset);
@@ -234,55 +266,400 @@ export default class UkgHoursDashboard extends LightningElement {
         return lastDay;
     }
 
+    // HPG's observed-holiday rule: a holiday landing on Saturday is observed the
+    // preceding Friday, and on Sunday the following Monday - EXCEPT New Year's Day,
+    // which always shifts to the following Monday regardless of Saturday or Sunday.
+    // Only fixed-calendar-date holidays (New Year's, July 4th, Christmas) can ever
+    // land on a weekend; the "Nth weekday of month" holidays (Memorial Day, Labor Day,
+    // Thanksgiving) are always weekday-anchored and never need shifting.
+    observedHolidayDate(date, isNewYearsDay) {
+        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek === 6) {
+            const observed = new Date(date);
+            observed.setDate(date.getDate() + (isNewYearsDay ? 2 : -1));
+            return observed;
+        }
+        if (dayOfWeek === 0) {
+            const observed = new Date(date);
+            observed.setDate(date.getDate() + 1);
+            return observed;
+        }
+        return date;
+    }
+
     getMajorHolidays(year) {
         return [
-            new Date(year, 0, 1), // New Year's Day
-            this.lastWeekdayOfMonth(year, 4, 1), // Memorial Day (last Monday of May)
-            new Date(year, 6, 4), // July 4th
-            this.nthWeekdayOfMonth(year, 8, 1, 1), // Labor Day (1st Monday of September)
-            this.nthWeekdayOfMonth(year, 10, 4, 4), // Thanksgiving (4th Thursday of November)
-            new Date(year, 11, 25) // Christmas
+            this.observedHolidayDate(new Date(year, 0, 1), true), // New Year's Day
+            this.lastWeekdayOfMonth(year, 4, 1), // Memorial Day (last Monday of May) - always a Monday
+            this.observedHolidayDate(new Date(year, 6, 4), false), // July 4th
+            this.nthWeekdayOfMonth(year, 8, 1, 1), // Labor Day (1st Monday of September) - always a Monday
+            this.nthWeekdayOfMonth(year, 10, 4, 4), // Thanksgiving (4th Thursday of November) - always a Thursday
+            this.observedHolidayDate(new Date(year, 11, 25), false) // Christmas
         ];
     }
 
-    get expectedCapacityHoursPerAssociate() {
-        if (!this.weekEndDates.length) return 0;
-
-        const weekdays = this.weekdayDatesInTargetWeek;
-        const year = this.targetWeekMonday.getFullYear();
+    // A "billable day" is a Mon-Fri weekday that isn't one of the 6 major holidays.
+    // Returns a count from 0-5 for the work week ending on weekEndDateStr.
+    billableDayCountForWeekEnd(weekEndDateStr) {
+        const weekdays = this.weekdayDatesForWeekEnd(weekEndDateStr);
+        const year = this.mondayForWeekEnd(weekEndDateStr).getFullYear();
         // Covers the rare work-week that spans a year boundary (late Dec / early Jan).
         const holidays = [year - 1, year, year + 1].flatMap((y) => this.getMajorHolidays(y));
         const isHoliday = (d) =>
             holidays.some(
                 (h) => h.getFullYear() === d.getFullYear() && h.getMonth() === d.getMonth() && h.getDate() === d.getDate()
             );
-        const holidayWeekdaysInWeek = weekdays.filter(isHoliday).length;
-        return (5 - holidayWeekdaysInWeek) * 8;
+        return weekdays.filter((d) => !isHoliday(d)).length;
+    }
+
+    capacityHoursForWeekEnd(weekEndDateStr) {
+        return this.billableDayCountForWeekEnd(weekEndDateStr) * 8;
+    }
+
+    get expectedCapacityHoursPerAssociate() {
+        if (!this.weekEndDates.length) return 0;
+        return this.capacityHoursForWeekEnd(this.weekEndDates[0]);
+    }
+
+    // --- Billable hours per billable day (all billable hours - PW2 + HW2/1099 - current vs. prior week) ---
+
+    get currentWeekBillableDays() {
+        return this.weekEndDates.length ? this.billableDayCountForWeekEnd(this.weekEndDates[0]) : 0;
+    }
+
+    get priorWeekBillableDays() {
+        return this.weekEndDates.length > 1 ? this.billableDayCountForWeekEnd(this.weekEndDates[1]) : 0;
+    }
+
+    get totalBillablePerDayCurrent() {
+        return this.currentWeekBillableDays ? this.totalBillableCurrentWeekTotal / this.currentWeekBillableDays : null;
+    }
+
+    get totalBillablePerDayPrior() {
+        return this.priorWeekBillableDays ? this.totalBillablePriorWeekTotal / this.priorWeekBillableDays : null;
+    }
+
+    get formattedTotalBillablePerDayCurrent() {
+        return this.totalBillablePerDayCurrent === null ? 'N/A' : `${this.totalBillablePerDayCurrent.toFixed(1)} hrs/day`;
+    }
+
+    get formattedTotalBillablePerDayPrior() {
+        return this.totalBillablePerDayPrior === null ? 'N/A' : `${this.totalBillablePerDayPrior.toFixed(1)} hrs/day`;
+    }
+
+    get totalBillablePerDayDelta() {
+        if (this.totalBillablePerDayCurrent === null || this.totalBillablePerDayPrior === null) {
+            return { pct: null, direction: 'flat', label: 'N/A vs last week' };
+        }
+        return this.computeDelta(this.totalBillablePerDayCurrent, this.totalBillablePerDayPrior);
+    }
+
+    get totalBillablePerDayDeltaClass() {
+        return this.deltaClassFor(this.totalBillablePerDayDelta);
+    }
+
+    // --- Current Month / Last Month To Date / Last Month Total ---
+    // Apex already buckets each associate's hours into these 3 date-precise buckets
+    // using the report's Counter Date column, so this is just simple aggregation
+    // (sums + billable-day counts over arbitrary date ranges) - no week-to-month
+    // attribution needed here, unlike the weekly tile above. Percentages only ever
+    // compare Current Month against Last Month To Date (the fair, same-elapsed-days
+    // comparison); Last Month Total is shown for context only.
+
+    sumMonthlyField(list, field) {
+        return (list || []).reduce((acc, s) => acc + (Number(s[field]) || 0), 0);
+    }
+
+    // referenceAsOfDate is authoritative from Apex (monthlyAsOfDate): the last
+    // completed Saturday, or, if fewer than 7 days have elapsed in the new month, the
+    // last day of the previous month (so Current Month shows the last full month
+    // instead of an almost-empty new one). Deriving referenceMonthStart FROM this date
+    // works in both cases - it's always the 1st of whichever month Current Month
+    // actually refers to.
+    get referenceAsOfDate() {
+        if (!this.monthlyAsOfDate) return new Date();
+        const [y, m, d] = this.monthlyAsOfDate.split('-').map((p) => parseInt(p, 10));
+        return new Date(y, m - 1, d);
+    }
+
+    get referenceMonthStart() {
+        const d = this.referenceAsOfDate;
+        return new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+
+    get currentMonthLabel() {
+        const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        return `Through ${formatter.format(this.referenceAsOfDate)}`;
+    }
+
+    get startOfLastMonth() {
+        const s = this.referenceMonthStart;
+        return new Date(s.getFullYear(), s.getMonth() - 1, 1);
+    }
+
+    get endOfLastMonth() {
+        const s = this.referenceMonthStart;
+        return new Date(s.getFullYear(), s.getMonth(), 0);
+    }
+
+    get lastMonthToDateCutoff() {
+        const daysInLastMonth = this.endOfLastMonth.getDate();
+        const cutoffDay = Math.min(this.referenceAsOfDate.getDate(), daysInLastMonth);
+        const lastMonthStart = this.startOfLastMonth;
+        return new Date(lastMonthStart.getFullYear(), lastMonthStart.getMonth(), cutoffDay);
+    }
+
+    // Counts Mon-Fri weekdays that aren't a major holiday, inclusive of both ends.
+    billableDayCountBetween(startDate, endDate) {
+        if (startDate > endDate) return 0;
+        const years = new Set();
+        for (let y = startDate.getFullYear(); y <= endDate.getFullYear(); y++) {
+            years.add(y);
+        }
+        const holidays = [...years].flatMap((y) => this.getMajorHolidays(y));
+        const isHoliday = (d) =>
+            holidays.some(
+                (h) => h.getFullYear() === d.getFullYear() && h.getMonth() === d.getMonth() && h.getDate() === d.getDate()
+            );
+        let count = 0;
+        const cursor = new Date(startDate);
+        while (cursor <= endDate) {
+            const dayOfWeek = cursor.getDay();
+            if (dayOfWeek >= 1 && dayOfWeek <= 5 && !isHoliday(cursor)) {
+                count += 1;
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return count;
+    }
+
+    get currentMonthBillableDays() {
+        return this.billableDayCountBetween(this.referenceMonthStart, this.referenceAsOfDate);
+    }
+
+    get lastMonthToDateBillableDays() {
+        return this.billableDayCountBetween(this.startOfLastMonth, this.lastMonthToDateCutoff);
+    }
+
+    get lastMonthTotalBillableDays() {
+        return this.billableDayCountBetween(this.startOfLastMonth, this.endOfLastMonth);
+    }
+
+    get currentMonthPw2Total() {
+        return this.sumMonthlyField(this.monthlyPw2Summaries, 'currentMonthHours');
+    }
+
+    get lastMonthToDatePw2Total() {
+        return this.sumMonthlyField(this.monthlyPw2Summaries, 'lastMonthToDateHours');
+    }
+
+    get lastMonthTotalPw2Total() {
+        return this.sumMonthlyField(this.monthlyPw2Summaries, 'lastMonthTotalHours');
+    }
+
+    get currentMonthHw2Total() {
+        return this.sumMonthlyField(this.monthlyHw2Summaries, 'currentMonthHours');
+    }
+
+    get lastMonthToDateHw2Total() {
+        return this.sumMonthlyField(this.monthlyHw2Summaries, 'lastMonthToDateHours');
+    }
+
+    get lastMonthTotalHw2Total() {
+        return this.sumMonthlyField(this.monthlyHw2Summaries, 'lastMonthTotalHours');
+    }
+
+    get currentMonthTotalBillable() {
+        return this.currentMonthPw2Total + this.currentMonthHw2Total;
+    }
+
+    get lastMonthToDateTotalBillable() {
+        return this.lastMonthToDatePw2Total + this.lastMonthToDateHw2Total;
+    }
+
+    get lastMonthTotalTotalBillable() {
+        return this.lastMonthTotalPw2Total + this.lastMonthTotalHw2Total;
+    }
+
+    get monthlyTotalBillableDelta() {
+        return this.computeDelta(this.currentMonthTotalBillable, this.lastMonthToDateTotalBillable, 'last month to date');
+    }
+
+    get monthlyTotalBillableDeltaClass() {
+        return this.deltaClassFor(this.monthlyTotalBillableDelta);
+    }
+
+    get currentMonthBenchTotal() {
+        return this.sumMonthlyField(this.monthlyBenchSummaries, 'currentMonthHours');
+    }
+
+    get lastMonthToDateBenchTotal() {
+        return this.sumMonthlyField(this.monthlyBenchSummaries, 'lastMonthToDateHours');
+    }
+
+    get lastMonthTotalBenchTotal() {
+        return this.sumMonthlyField(this.monthlyBenchSummaries, 'lastMonthTotalHours');
+    }
+
+    get monthlyBenchDelta() {
+        return this.computeDelta(this.currentMonthBenchTotal, this.lastMonthToDateBenchTotal, 'last month to date');
+    }
+
+    get monthlyBenchDeltaClass() {
+        return this.deltaClassFor(this.monthlyBenchDelta);
+    }
+
+    get currentMonthBillablePerDay() {
+        return this.currentMonthBillableDays ? this.currentMonthTotalBillable / this.currentMonthBillableDays : null;
+    }
+
+    get lastMonthToDateBillablePerDay() {
+        return this.lastMonthToDateBillableDays ? this.lastMonthToDateTotalBillable / this.lastMonthToDateBillableDays : null;
+    }
+
+    get lastMonthTotalBillablePerDay() {
+        return this.lastMonthTotalBillableDays ? this.lastMonthTotalTotalBillable / this.lastMonthTotalBillableDays : null;
+    }
+
+    get formattedCurrentMonthBillablePerDay() {
+        return this.currentMonthBillablePerDay === null ? 'N/A' : `${this.currentMonthBillablePerDay.toFixed(1)} hrs/day`;
+    }
+
+    get formattedLastMonthToDateBillablePerDay() {
+        return this.lastMonthToDateBillablePerDay === null ? 'N/A' : `${this.lastMonthToDateBillablePerDay.toFixed(1)} hrs/day`;
+    }
+
+    get formattedLastMonthTotalBillablePerDay() {
+        return this.lastMonthTotalBillablePerDay === null ? 'N/A' : `${this.lastMonthTotalBillablePerDay.toFixed(1)} hrs/day`;
+    }
+
+    get monthlyBillablePerDayDelta() {
+        if (this.currentMonthBillablePerDay === null || this.lastMonthToDateBillablePerDay === null) {
+            return { pct: null, direction: 'flat', label: 'N/A vs last month to date' };
+        }
+        return this.computeDelta(this.currentMonthBillablePerDay, this.lastMonthToDateBillablePerDay, 'last month to date');
+    }
+
+    get monthlyBillablePerDayDeltaClass() {
+        return this.deltaClassFor(this.monthlyBillablePerDayDelta);
+    }
+
+    // Monthly Avg Utilization - Current Month only, same billable-only / APL-separate
+    // approach as the weekly tile, summed over however many billable days have
+    // elapsed this month.
+    get monthlyPw2Headcount() {
+        return this.monthlyPw2Summaries.length;
+    }
+
+    get monthlyPw2AplTotal() {
+        return this.sumMonthlyField(this.monthlyPw2Summaries, 'currentMonthAplHours');
+    }
+
+    get currentMonthCapacityHours() {
+        return this.monthlyPw2Headcount * this.currentMonthBillableDays * 8;
+    }
+
+    get currentMonthAvgUtilizationPct() {
+        return this.currentMonthCapacityHours ? (this.currentMonthPw2Total / this.currentMonthCapacityHours) * 100 : null;
+    }
+
+    get formattedCurrentMonthAvgUtilizationPct() {
+        return this.currentMonthAvgUtilizationPct === null ? 'N/A' : `${this.currentMonthAvgUtilizationPct.toFixed(1)}%`;
+    }
+
+    get currentMonthAvgAplPct() {
+        return this.currentMonthCapacityHours ? (this.monthlyPw2AplTotal / this.currentMonthCapacityHours) * 100 : null;
+    }
+
+    get formattedCurrentMonthAvgAplPct() {
+        return this.currentMonthAvgAplPct === null ? 'N/A' : `${this.currentMonthAvgAplPct.toFixed(1)}%`;
+    }
+
+    get currentMonthAvgUtilizationInclAplPct() {
+        if (this.currentMonthAvgUtilizationPct === null || this.currentMonthAvgAplPct === null) return null;
+        return this.currentMonthAvgUtilizationPct + this.currentMonthAvgAplPct;
+    }
+
+    get formattedCurrentMonthAvgUtilizationInclAplPct() {
+        return this.currentMonthAvgUtilizationInclAplPct === null ? 'N/A' : `${this.currentMonthAvgUtilizationInclAplPct.toFixed(1)}%`;
     }
 
     get pw2Headcount() {
-        return this.pw2Summaries.length;
+        return this.pw2SummariesActiveForUtilization.length;
     }
 
-    // "Effective present hours" = billable hours + approved time off (APL + Holiday), so
-    // an associate on approved leave isn't penalized in the utilization math. Falls back
-    // to 0 for the two time-off fields if the UKG report hasn't been updated with the new
-    // APL/Holiday columns yet - Apex already defaults them to 0 in that case too.
-    individualEffectiveHours(summary) {
-        return Number(summary.w1Hours || 0) + Number(summary.w1_aplHours || 0) + Number(summary.w1_holidayHours || 0);
+    // Terminated associates still appear in the general PW2 table/totals (they may
+    // have logged real hours during the week), but per the business rule they should
+    // be excluded from Last Week utilization (headcount and hours) - and from Low
+    // Utilization highlighting - once their termination date precedes the start of
+    // the most recent (Mon-Fri) work week. An active associate (no termination date)
+    // always counts.
+    isActiveForLastWeekUtilization(summary) {
+        if (!summary.terminationDate) return true;
+        const cutoff = this.startOfLastWeek;
+        if (!cutoff) return true;
+        const [y, m, d] = summary.terminationDate.split('-').map((p) => parseInt(p, 10));
+        const terminationDate = new Date(y, m - 1, d);
+        return terminationDate >= cutoff;
     }
 
-    get pw2EffectivePresentHours() {
-        return this.pw2Summaries.reduce((acc, s) => acc + this.individualEffectiveHours(s), 0);
+    get pw2SummariesActiveForUtilization() {
+        return this.pw2Summaries.filter((s) => this.isActiveForLastWeekUtilization(s));
+    }
+
+    // Utilization is billable hours only - APL is time off, not utilization, so it's
+    // never blended into this number. Holiday isn't factored in here either: the
+    // expectedCapacityHoursPerAssociate denominator already subtracts holiday weekdays
+    // company-wide, so adding per-associate Holiday hours to the numerator would double-count.
+    individualBillableHours(summary) {
+        return Number(summary.w1Hours || 0);
+    }
+
+    individualAplHours(summary) {
+        return Number(summary.w1_aplHours || 0);
+    }
+
+    // Numerator for Last Week utilization - excludes terminated associates the same
+    // way pw2Headcount does, so the % reflects only the active-for-the-week roster.
+    // Distinct from pw2CurrentWeekTotal, which stays unfiltered for the KPI tile.
+    get pw2UtilizationHoursTotal() {
+        return this.sumField(this.pw2SummariesActiveForUtilization, 'w1Hours');
     }
 
     get avgUtilizationPct() {
         const denom = this.pw2Headcount * this.expectedCapacityHoursPerAssociate;
-        return denom ? (this.pw2EffectivePresentHours / denom) * 100 : null;
+        return denom ? (this.pw2UtilizationHoursTotal / denom) * 100 : null;
     }
 
     get formattedAvgUtilizationPct() {
         return this.avgUtilizationPct === null ? 'N/A' : `${this.avgUtilizationPct.toFixed(1)}%`;
+    }
+
+    // Separate figure: how much of capacity APL alone accounts for, so a low
+    // utilization number can be read alongside "how much of that gap is approved
+    // leave" without pretending APL counts as utilization.
+    get pw2AplTotal() {
+        return this.sumField(this.pw2SummariesActiveForUtilization, 'w1_aplHours');
+    }
+
+    get avgAplPct() {
+        const denom = this.pw2Headcount * this.expectedCapacityHoursPerAssociate;
+        return denom ? (this.pw2AplTotal / denom) * 100 : null;
+    }
+
+    get formattedAvgAplPct() {
+        return this.avgAplPct === null ? 'N/A' : `${this.avgAplPct.toFixed(1)}%`;
+    }
+
+    // "What the number would be" if APL were counted - purely informational, shown
+    // alongside the two figures above, not used anywhere as the real utilization number.
+    get avgUtilizationInclAplPct() {
+        if (this.avgUtilizationPct === null || this.avgAplPct === null) return null;
+        return this.avgUtilizationPct + this.avgAplPct;
+    }
+
+    get formattedAvgUtilizationInclAplPct() {
+        return this.avgUtilizationInclAplPct === null ? 'N/A' : `${this.avgUtilizationInclAplPct.toFixed(1)}%`;
     }
 
     // --- Bench alerts ---
@@ -298,27 +675,29 @@ export default class UkgHoursDashboard extends LightningElement {
     }
 
     // --- Low PW2 utilization alerts ---
-    // Same capacity figure and effective-hours (billable + APL + Holiday) calc used for
-    // the company-wide Avg Utilization tile, applied per associate. Note this carries the
-    // same approximation as that tile: there's no roster data distinguishing full-time vs.
-    // part-time PW2 associates, so a part-time associate at their own full capacity may
-    // still show here.
+    // Same billable-only capacity math as the company-wide Avg Utilization tile, applied
+    // per associate - APL time is time off, not utilization, so an associate on approved
+    // leave still shows up here (that's correct), but their APL hours are surfaced as an
+    // annotation so it reads as "explained by leave" rather than a performance flag. Note
+    // this carries the same approximation as the tile above: there's no roster data
+    // distinguishing full-time vs. part-time PW2 associates, so a part-time associate at
+    // their own full capacity may still show here.
 
     get lowUtilizationAlerts() {
         const capacity = this.expectedCapacityHoursPerAssociate;
         if (!capacity) return [];
-        return this.pw2Summaries
-            .filter((s) => this.individualEffectiveHours(s) < capacity)
+        return this.pw2SummariesActiveForUtilization
+            .filter((s) => this.individualBillableHours(s) < capacity)
             .map((s) => {
-                const effectiveHours = this.individualEffectiveHours(s);
-                const timeOffHours = Number(s.w1_aplHours || 0) + Number(s.w1_holidayHours || 0);
+                const billableHours = this.individualBillableHours(s);
+                const aplHours = this.individualAplHours(s);
                 return {
                     ...s,
-                    utilizationDisplay: `${((effectiveHours / capacity) * 100).toFixed(0)}%`,
-                    timeOffNote: timeOffHours > 0 ? ` (+${timeOffHours.toFixed(1)} PTO/Holiday)` : ''
+                    utilizationDisplay: `${((billableHours / capacity) * 100).toFixed(0)}%`,
+                    timeOffNote: aplHours > 0 ? ` (+${aplHours.toFixed(1)} APL)` : ''
                 };
             })
-            .sort((a, b) => this.individualEffectiveHours(a) - this.individualEffectiveHours(b));
+            .sort((a, b) => this.individualBillableHours(a) - this.individualBillableHours(b));
     }
 
     get hasLowUtilizationAlerts() {
@@ -360,15 +739,20 @@ export default class UkgHoursDashboard extends LightningElement {
         return list.filter((s) => (s.contactName || '').toLowerCase().includes(this.searchTerm));
     }
 
-    // PW2 rows only - flags associates under 100% utilization (effective hours,
-    // i.e. billable + APL + Holiday, under the week's expected capacity) for row
-    // highlighting. Utilization doesn't apply to HW2/1099 or Bench, so this flag
-    // is PW2-specific.
+    // PW2 rows only - flags associates under 100% utilization (billable hours under the
+    // week's expected capacity) for row highlighting. Utilization doesn't apply to
+    // HW2/1099 or Bench, so this flag is PW2-specific. Maps over the FULL pw2Summaries
+    // list (terminated associates still appear in the table if they logged hours), but
+    // withholds the low-utilization highlight from anyone terminated before the start
+    // of the most recent work week.
     get pw2SummariesWithUtilizationFlag() {
         const capacity = this.expectedCapacityHoursPerAssociate;
         return this.pw2Summaries.map((s) => ({
             ...s,
-            rowClass: capacity && this.individualEffectiveHours(s) < capacity ? 'slds-hint-parent low-utilization-row' : 'slds-hint-parent'
+            rowClass:
+                capacity && this.individualBillableHours(s) < capacity && this.isActiveForLastWeekUtilization(s)
+                    ? 'slds-hint-parent low-utilization-row'
+                    : 'slds-hint-parent'
         }));
     }
 

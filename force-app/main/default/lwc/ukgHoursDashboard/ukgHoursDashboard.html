@@ -50,41 +50,83 @@
         <template if:true={showDashboard}>
 
             <!-- KPI Tile Row -->
-            <div class="slds-grid slds-wrap slds-gutters slds-p-around_small">
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5 slds-p-bottom_small">
+            <div class="slds-card slds-p-around_small slds-p-bottom_none slds-m-horizontal_small slds-m-top_small">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Last Week</h2>
+                <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
                     <div class="slds-card kpi-tile">
                         <p class="slds-text-title_caps slds-text-color_weak">Total Billable Hours</p>
                         <p class="slds-text-heading_large">{totalBillableCurrentWeekTotal} hrs</p>
                         <p class={totalBillableDeltaClass}>{totalBillableDelta.label}</p>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">PW2: {pw2CurrentWeekTotal} hrs (<span class={pw2DeltaClass}>{pw2Delta.label}</span>)</p>
+                        <p class="slds-text-body_small slds-text-color_weak">HW2/1099: {hw2CurrentWeekTotal} hrs (<span class={hw2DeltaClass}>{hw2Delta.label}</span>)</p>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5 slds-p-bottom_small">
-                    <div class="slds-card kpi-tile">
-                        <p class="slds-text-title_caps slds-text-color_weak">PW2 Billable</p>
-                        <p class="slds-text-heading_large">{pw2CurrentWeekTotal} hrs</p>
-                        <p class={pw2DeltaClass}>{pw2Delta.label}</p>
-                    </div>
-                </div>
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5 slds-p-bottom_small">
-                    <div class="slds-card kpi-tile">
-                        <p class="slds-text-title_caps slds-text-color_weak">HW2 / 1099 Billable</p>
-                        <p class="slds-text-heading_large">{hw2CurrentWeekTotal} hrs</p>
-                        <p class={hw2DeltaClass}>{hw2Delta.label}</p>
-                    </div>
-                </div>
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5 slds-p-bottom_small">
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
                     <div class="slds-card kpi-tile">
                         <p class="slds-text-title_caps slds-text-color_weak">Bench Time Summary</p>
                         <p class="slds-text-heading_large">{benchCurrentWeekTotal} hrs</p>
                         <p class={benchDeltaClass}>{benchDelta.label}</p>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5 slds-p-bottom_small">
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
                     <div class="slds-card kpi-tile">
                         <p class="slds-text-title_caps slds-text-color_weak">Avg Utilization</p>
                         <p class="slds-text-heading_large">{formattedAvgUtilizationPct}</p>
-                        <p class="slds-text-body_small slds-text-color_weak">PW2 only · incl. APL/Holiday · approx., based on {pw2Headcount} reporting associates</p>
+                        <p class="slds-text-body_small slds-text-color_weak">PW2 billable only · based on {pw2Headcount} reporting associates</p>
+                        <p class="slds-text-body_small slds-text-color_weak">+{formattedAvgAplPct} APL → {formattedAvgUtilizationInclAplPct} incl. APL</p>
                     </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
+                    <div class="slds-card kpi-tile">
+                        <p class="slds-text-title_caps slds-text-color_weak">Billable Hours / Billable Day</p>
+                        <p class="slds-text-heading_large">{formattedTotalBillablePerDayCurrent}</p>
+                        <p class={totalBillablePerDayDeltaClass}>{totalBillablePerDayDelta.label}</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Prev week: {formattedTotalBillablePerDayPrior}</p>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- Current Month Tile Row -->
+            <div class="slds-card slds-p-around_small slds-p-bottom_none slds-m-horizontal_small slds-m-top_small">
+                <h2 class="slds-text-heading_small slds-m-bottom_small">Current Month <span class="slds-text-body_small slds-text-color_weak">({currentMonthLabel})</span></h2>
+                <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
+                    <div class="slds-card kpi-tile">
+                        <p class="slds-text-title_caps slds-text-color_weak">Total Billable Hours</p>
+                        <p class="slds-text-heading_large">{currentMonthTotalBillable} hrs</p>
+                        <p class={monthlyTotalBillableDeltaClass}>{monthlyTotalBillableDelta.label}</p>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">Last month to date: {lastMonthToDateTotalBillable} hrs</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Last month total: {lastMonthTotalTotalBillable} hrs</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
+                    <div class="slds-card kpi-tile">
+                        <p class="slds-text-title_caps slds-text-color_weak">Bench Time Summary</p>
+                        <p class="slds-text-heading_large">{currentMonthBenchTotal} hrs</p>
+                        <p class={monthlyBenchDeltaClass}>{monthlyBenchDelta.label}</p>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">Last month to date: {lastMonthToDateBenchTotal} hrs</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Last month total: {lastMonthTotalBenchTotal} hrs</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
+                    <div class="slds-card kpi-tile">
+                        <p class="slds-text-title_caps slds-text-color_weak">Avg Utilization</p>
+                        <p class="slds-text-heading_large">{formattedCurrentMonthAvgUtilizationPct}</p>
+                        <p class="slds-text-body_small slds-text-color_weak">PW2 billable only · based on {monthlyPw2Headcount} reporting associates</p>
+                        <p class="slds-text-body_small slds-text-color_weak">+{formattedCurrentMonthAvgAplPct} APL → {formattedCurrentMonthAvgUtilizationInclAplPct} incl. APL</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-bottom_small">
+                    <div class="slds-card kpi-tile">
+                        <p class="slds-text-title_caps slds-text-color_weak">Billable Hours / Billable Day</p>
+                        <p class="slds-text-heading_large">{formattedCurrentMonthBillablePerDay}</p>
+                        <p class={monthlyBillablePerDayDeltaClass}>{monthlyBillablePerDayDelta.label}</p>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">Last month to date: {formattedLastMonthToDateBillablePerDay}</p>
+                        <p class="slds-text-body_small slds-text-color_weak">Last month total: {formattedLastMonthTotalBillablePerDay}</p>
+                    </div>
+                </div>
                 </div>
             </div>
 
