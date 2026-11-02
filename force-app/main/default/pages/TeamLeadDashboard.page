@@ -1,0 +1,227 @@
+<apex:page standardController="Contact" extensions="TeamLeadDashboardController">
+    <script>
+        // Define a JavaScript function to refresh the entire page
+        function refreshPage() {
+            window.location.reload();
+        }
+    </script>
+    
+    <style> 
+        .name { 
+            margin-top: 2rem; 
+            color: green; 
+            text-align: center; 
+        } 
+  
+        .box { 
+            margin-left: 38rem; 
+            margin-right: 38rem; 
+            width: 300px; 
+            height: 200px; 
+            background-color: lightgray; 
+            padding: 1rem; 
+            box-sizing: border-box; 
+            border: 2px solid gray; 
+        } 
+  
+        .inner { 
+            border: 2px solid red; 
+            height: 100%; 
+            box-sizing: border-box; 
+            padding: 1rem; 
+            text-align: center; 
+            color: green; 
+        } 
+        
+        /* Add a new CSS class for highlighting */
+        .highlighted {
+            background-color: green; /* You can change the color to whatever you prefer */
+        }
+        
+        .reportChartContainer {
+            width: 100%; /* Set width to 100% to fill the table cell */
+        }
+        
+        table.bdDashboard td {
+        	border:1px solid black;
+        }
+        
+        table.addReports td {
+        	border:1px solid black;
+        }
+    </style>
+
+    <apex:form >
+        <div style="display: flex; align-items: center;">
+            <h1 style="margin-right: 10px;">Communication</h1>
+            <!-- Command Button Positioned Next to the Title -->
+            <apex:commandButton value="Refresh Team" action="{!refreshData}" reRender="teamMembersTable" />
+        </div>
+        <apex:pageBlock id="teamLeadDashboardBlock">
+            <!-- Header -->
+            
+            <div style="width:100%; display:flex;">
+                <div style="width: 18%; text-align: center; font-weight: bold;"></div>
+                <div style="width: 5%; text-align: center; font-weight: bold;"></div>
+                <div style="width:35%; text-align: center; font-weight: bold;"></div>
+                <apex:repeat value="{!columnHeaders}" var="headers">
+                    <div style="width:3%; text-align: center; font-weight: bold;">{!headers}</div>
+                </apex:repeat>
+            </div>
+            
+            <!-- Data Table -->
+            <apex:pageBlockTable value="{!teamMembers}" var="teamMember" id="teamMembersTable">
+                <apex:column styleClass="txt" style="width:18%" headerClass="col" headerValue="Name">
+                    <apex:outputPanel rendered="{!teamMember.member.HPG_Title__c != 'Senior Consultant Hourly W-2' && teamMember.member.Today_Is_Birthday__c}">
+                    	<apex:outputLink value="/{!teamMember.member.Id}" target="_blank">{!teamMember.member.Name}</apex:outputLink> <!-- Use member.Id -->
+                		<apex:outputText >&nbsp;&nbsp;</apex:outputText>
+                        <apex:image value="{!$Resource.Icon_HPG_Birthday}" width="16" height="16" />
+                    </apex:outputPanel>
+                    <apex:outputPanel rendered="{!teamMember.member.HPG_Title__c != 'Senior Consultant Hourly W-2' && teamMember.member.Today_Is_Birthday__c != true}">
+                    	<apex:outputLink value="/{!teamMember.member.Id}" target="_blank">{!teamMember.member.Name}</apex:outputLink> <!-- Use member.Id -->
+                    </apex:outputPanel>
+                    <apex:outputPanel rendered="{!teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2' && teamMember.member.Today_Is_Birthday__c}">
+                    	<apex:outputLink value="/{!teamMember.member.Id}" target="_blank">{!teamMember.member.Name}</apex:outputLink> <!-- Use member.Id -->
+   						<apex:outputText >&nbsp;&nbsp;</apex:outputText>
+                        <apex:image value="{!IF(teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2', $Resource.Icon_HPG_HW2, '')}" rendered="{!teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2'}" width="18" height="18" />
+                        <apex:outputText >&nbsp;</apex:outputText>
+                        <apex:image value="{!$Resource.Icon_HPG_Birthday}" width="16" height="16" />
+                	</apex:outputPanel>
+                    <apex:outputPanel rendered="{!teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2' && teamMember.member.Today_Is_Birthday__c != true}">
+                    	<apex:outputLink value="/{!teamMember.member.Id}" target="_blank">{!teamMember.member.Name}</apex:outputLink> <!-- Use member.Id -->
+                        <apex:outputText >&nbsp;&nbsp;</apex:outputText>
+                        <apex:image value="{!IF(teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2', $Resource.Icon_HPG_HW2, '')}" rendered="{!teamMember.member.HPG_Title__c == 'Senior Consultant Hourly W-2'}" width="18" height="18" />
+                    </apex:outputPanel>
+                </apex:column>
+                <apex:column styleClass="txt" style="width:5%" headerClass="col" headerValue="Log Activity">
+                    <apex:outputLink value="/apex/TaskLogPage?whoId={!teamMember.member.Id}&whatId={!teamMember.member.AccountId}">
+                        Log Activity
+                    </apex:outputLink>
+                </apex:column>
+                <apex:column styleClass="txt" style="width:35%" headerClass="col" headerValue="Last Activity">
+                    <apex:outputPanel rendered="{!teamMember.lastActivity.description != 'No activity recorded'}">
+                        <span title="{!teamMember.lastActivity.display}">
+                        	<apex:outputLink value="/{!teamMember.lastActivity.taskId}" target="_blank">{!teamMember.lastActivity.description}</apex:outputLink>
+                        </span>
+                    </apex:outputPanel>
+                    <apex:outputPanel rendered="{!teamMember.lastActivity.description == 'No activity recorded'}">
+                        {!teamMember.lastActivity.description}
+                    </apex:outputPanel>
+                </apex:column>                   
+                <!-- old code
+				<apex:column styleClass="txt" style="width:35%" headerClass="col" headerValue="Last Activity">
+                	<apex:outputText value="{!teamMember.LastActivity}" />
+                    <apex:outputLink value="/{!teamMember.LastActivity}" target="_blank">{!teamMember.LastActivity}</apex:outputLink>
+                </apex:column>
+				 -->
+                
+                <!-- Display a checkbox column for each of the last 14 months -->
+                <apex:repeat value="{!teamMember.communicatedMonths}" var="monthKey">
+					<apex:column style="width:3%; text-align: center;">
+                        <apex:inputCheckbox value="{!teamMember.communicatedMonths[monthKey]}" disabled="true"/>
+                    </apex:column>
+                </apex:repeat>
+            </apex:pageBlockTable>
+		</apex:pageBlock>
+        <div style="display: flex; align-items: center;">
+            <h1 style="margin-right: 10px;">BD Dashboard</h1>
+            <!-- Command Button Positioned Next to the Title -->
+            <apex:commandButton value="Refresh Reports" action="{!refreshData}" reRender="bdDashboardBlock,teamReportsBlock" />
+        </div>
+        <apex:pageBlock id="bdDashboardBlock">
+            <table style="width:100%;" class="bdDashboard">
+                <tr> <!-- First Row -->
+                    <!-- First Column -->
+                    <td>
+                        <analytics:reportChart reportId="00Oa0000007OwQOEA0" showRefreshButton="false" size="medium"/> <!-- Closed Won This Week -->
+                    </td>
+                    <!-- Second Column -->
+                    <td>
+                    	<analytics:reportChart reportId="00Oa0000009OILoEAO" showRefreshButton="false" size="medium"/> <!-- Combined 30 day opportunties -->
+                    </td>
+                    <!-- Third Column -->
+                    <td>
+                    	<analytics:reportChart reportId="00OPI000004rHOb2AM" showRefreshButton="false" size="medium"/> <!-- 90 Day Resource Plan - By Team -->
+                    </td>
+                </tr>
+                <tr> <!-- Second Row -->
+                    <!-- First Column -->
+                    <td>
+                        <!-- <div class="reportChartContainer" style="text-align:center"> -->
+							<!-- <a href="https://docs.google.com/spreadsheets/d/1H960TtDeiager6kBsdNuGUB3cwLRzjm8rBoamEoWqXw/edit#gid=1263746008">Click for Support Center Report</a> -->
+                        <analytics:reportChart reportId="00O4Q000009VTjRUAW" showRefreshButton="false" size="medium"/> <!-- In Process Recruits -->
+                     <!-- </div> -->
+                    </td>
+                    <!-- Second Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00O4Q000009aZ3vUAE" showRefreshButton="false" size="medium"/> <!-- Resource Needs <30 day -->
+                        </div>
+                    </td>
+                    <!-- Third Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00Oa0000007lqgEEAQ" showRefreshButton="false" size="medium"/> <!-- 90 Day Resource Plan - By Date -->
+                        </div>
+                    </td>
+                </tr>
+                <tr> <!-- Third Row -->
+                    <!-- First Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00O4Q000009VTRxUAO" showRefreshButton="false" size="medium"/> <!-- 90 Day Resource Plan - Recruiting Funnel -->
+                        </div>
+                    </td>
+                    <!-- Second Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00Oa0000007QOIUEA4" showRefreshButton="false" size="medium"/> <!-- Engagement Summary By Territory -->
+                        </div>
+                    </td>
+                    <!-- Third Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00O30000006kDsZEAU" showRefreshButton="false" size="medium"/> <!-- 30 Day Funnel -->
+                        </div>
+                    </td>
+                </tr>
+                <tr> <!-- Fourth Row -->
+                    <!-- First Column -->
+                    <td>
+                        <div class="reportChartContainer">
+                            <analytics:reportChart reportId="00O4Q000009ViXuUAK" showRefreshButton="false" size="medium"/> <!-- Opportunities that Need Resource -->
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </apex:pageBlock>
+        <div style="display: flex; align-items: center;">
+            <h1 style="margin-right: 10px;">Additional Reports</h1>
+        </div>
+        <apex:pageBlock id="teamReportsBlock">
+            <table style="width:100%;" class="addReports">
+                <tr>
+                    <!-- First Column -->
+                    <td>
+                        <div style="width:100%;">
+                            <analytics:reportChart reportId="00Oa0000007m88eEAA" showRefreshButton="false" size="medium"/>
+                        </div>
+                    </td>
+                    <!-- Second Column -->
+                    <td>
+                        <div style="width:100%;">
+                            <analytics:reportChart reportId="00Oa0000007mVe7EAE" showRefreshButton="false" size="medium"/>
+                        </div>
+                    </td>
+                    <!-- Third Column -->
+                    <td>
+                        <div style="width:100%;">
+                            <analytics:reportChart reportId="00O4Q000009aVBgUAM" showRefreshButton="false" size="medium"/>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </apex:pageBlock>
+    </apex:form>
+
+</apex:page>

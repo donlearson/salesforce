@@ -1,0 +1,148 @@
+<template>
+    <div class="slds-p-around_medium">
+        <template if:true={errorMessage}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-bottom_medium" role="alert">
+                {errorMessage}
+            </div>
+        </template>
+
+        <template if:true={isLoadingContext}>
+            <lightning-spinner alternative-text="Loading dashboard" size="medium"></lightning-spinner>
+        </template>
+
+        <template if:false={isLoadingContext}>
+            <div class="slds-grid slds-grid_align-spread slds-m-bottom_medium">
+                <h1 class="slds-text-heading_large">Communication</h1>
+                <div>
+                    <lightning-button label="Log Activity" variant="brand" icon-name="utility:add" onclick={handleLogActivityWithAnyone} class="slds-m-right_small"></lightning-button>
+                    <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshAll}></lightning-button>
+                </div>
+            </div>
+
+            <!-- Follow Up Tasks (director-tier only) -->
+            <template if:true={isDirector}>
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                    <h1 class="slds-text-heading_medium">Follow Up Tasks</h1>
+                </div>
+                <template if:true={isLoadingFollowUps}>
+                    <lightning-spinner alternative-text="Loading follow up tasks" size="small"></lightning-spinner>
+                </template>
+                <template if:false={isLoadingFollowUps}>
+                    <template if:true={hasFollowUpTasks}>
+                        <div class="slds-scrollable_x slds-m-bottom_large">
+                            <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                <thead>
+                                    <tr class="slds-line-height_reset">
+                                        <th scope="col">Follow Up With</th>
+                                        <th scope="col">Subject</th>
+                                        <th scope="col">Due Date</th>
+                                        <th scope="col">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={followUpTasks} for:item="task">
+                                        <tr key={task.id}>
+                                            <td>
+                                                <a href="#" data-record-id={task.whoId} onclick={handleOpenRecord}>{task.whoName}</a>
+                                            </td>
+                                            <td>
+                                                <a href="#" data-task-id={task.id} title={task.description} onclick={handleOpenFollowUp}>{task.subject}</a>
+                                            </td>
+                                            <td>{task.activityDate}</td>
+                                            <td>{task.status}</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                    <template if:false={hasFollowUpTasks}>
+                        <p class="slds-m-bottom_large">No follow up tasks assigned to you.</p>
+                    </template>
+                </template>
+            </template>
+
+            <!-- Communication -->
+            <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                <h1 class="slds-text-heading_medium">Communication</h1>
+            </div>
+
+            <template if:true={showTeamLeadPicker}>
+                <div class="slds-m-bottom_small" style="max-width: 320px;">
+                    <lightning-combobox
+                        label="Team Lead"
+                        value={selectedTeamLeadId}
+                        options={teamLeadOptions}
+                        onchange={handleTeamLeadChange}
+                    ></lightning-combobox>
+                </div>
+            </template>
+
+            <template if:true={isLoadingRoster}>
+                <lightning-spinner alternative-text="Loading team" size="small"></lightning-spinner>
+            </template>
+
+            <template if:false={isLoadingRoster}>
+                <template if:true={hasRoster}>
+                    <div class="slds-scrollable_x">
+                        <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Log Activity</th>
+                                    <th scope="col">Last Activity</th>
+                                    <template for:each={monthHeaders} for:item="header">
+                                        <th scope="col" key={header.key} class="slds-text-align_center">{header.label}</th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={roster} for:item="member">
+                                    <tr key={member.id}>
+                                        <td>
+                                            <a href="#" data-record-id={member.id} onclick={handleOpenRecord}>{member.name}</a>
+                                            <template if:true={member.isBirthdayToday}>
+                                                <img src={birthdayIconUrl} title={member.birthdayTitle} width="16" height="16" class="slds-m-left_xx-small" alt="Birthday" />
+                                            </template>
+                                            <template if:true={member.showHourlyIcon}>
+                                                <img src={hourlyW2IconUrl} width="18" height="18" class="slds-m-left_xx-small" alt="Hourly W-2" />
+                                            </template>
+                                        </td>
+                                        <td>
+                                            <a
+                                                href="#"
+                                                data-contact-id={member.id}
+                                                data-contact-name={member.name}
+                                                data-account-id={member.accountId}
+                                                data-account-name={member.accountName}
+                                                onclick={handleLogActivity}
+                                            >Log Activity</a>
+                                        </td>
+                                        <td>
+                                            <template if:true={member.hasLastActivity}>
+                                                <a href="#" data-record-id={member.lastActivityTaskId} title={member.lastActivityDetail} onclick={handleOpenRecord}>{member.lastActivityDescription}</a>
+                                            </template>
+                                            <template if:false={member.hasLastActivity}>
+                                                {member.lastActivityDescription}
+                                            </template>
+                                        </td>
+                                        <template for:each={member.monthCells} for:item="cell">
+                                            <td key={cell.key} class="slds-text-align_center">
+                                                <template if:true={cell.checked}>
+                                                    <lightning-icon icon-name="utility:check" size="x-small" alternative-text="Communicated"></lightning-icon>
+                                                </template>
+                                            </td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+                <template if:false={hasRoster}>
+                    <p>No team members found.</p>
+                </template>
+            </template>
+        </template>
+    </div>
+</template>
