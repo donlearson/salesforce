@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>UKG Snapshot Admin</label>
+    <description>Read access to the raw UKG_Snapshot__c cache records (company-wide hours payloads) for admins troubleshooting the cached dashboard. Not needed to view the dashboard itself - see UKG Cached Dashboard Access.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>UKG_Snapshot__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Dataset__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Refreshed_At__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Last_Attempt_At__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Payload__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>UKG_Snapshot__c.Last_Error__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+</PermissionSet>

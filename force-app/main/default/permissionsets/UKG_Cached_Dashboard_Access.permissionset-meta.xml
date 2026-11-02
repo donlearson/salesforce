@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>UKG Cached Dashboard Access</label>
+    <description>Apex access for the cached UKG Hours Dashboard (ukgHoursDashboardCached). Assign alongside, or instead of, the existing dashboard permission sets while the two are compared. The dashboard shows company-wide hours, not team-scoped.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>UkgSnapshotController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+</PermissionSet>
