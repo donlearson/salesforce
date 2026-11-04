@@ -7,31 +7,21 @@
 <template>
     <div class="dashboard-container">
 
-        <!-- Header: title, period selector, refresh -->
+        <!-- Header: title, refresh -->
         <div class="slds-grid slds-grid_align-spread slds-wrap slds-p-around_small">
             <div>
-                <h1 class="slds-text-heading_medium">UKG Hours Dashboard <span class="slds-text-body_small slds-text-color_weak">(Cached)</span></h1>
+                <h1 class="slds-text-heading_medium header-text">UKG Hours Dashboard <span class="slds-text-body_small header-text">(Cached)</span></h1>
                 <template if:true={dataAsOfLabel}>
-                    <p class="slds-text-body_small slds-text-color_weak">Data as of {dataAsOfLabel}</p>
+                    <p class="slds-text-body_small header-text">Data as of {dataAsOfLabel}</p>
                 </template>
             </div>
             <div class="slds-grid slds-grid_vertical-align-center">
-                <div class="slds-form-element slds-m-right_x-small">
-                    <div class="slds-form-element__control">
-                        <select class="slds-select" onchange={handlePeriodChange}>
-                            <option value="last5" selected>Last 5 Weeks (Current)</option>
-                            <option value="prevQuarter" disabled>Previous Quarter</option>
-                        </select>
-                    </div>
-                </div>
-                <lightning-helptext content="Previous Quarter requires a new UKG report — coming soon"></lightning-helptext>
                 <lightning-button-icon
                     icon-name="utility:refresh"
                     alternative-text="Refresh Data"
                     title="Refresh Data"
                     disabled={isRefreshing}
-                    onclick={handleRefresh}
-                    class="slds-m-left_small">
+                    onclick={handleRefresh}>
                 </lightning-button-icon>
             </div>
         </div>

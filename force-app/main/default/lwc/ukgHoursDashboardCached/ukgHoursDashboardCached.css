@@ -1,3 +1,8 @@
+/* The page header behind this component is dark, so the title block is white */
+.header-text {
+    color: #ffffff;
+}
+
 /* Header centering for weekly/total columns, matching the standalone trackers */
 .slds-table thead tr th:nth-child(n+3) .slds-truncate {
     text-align: center;

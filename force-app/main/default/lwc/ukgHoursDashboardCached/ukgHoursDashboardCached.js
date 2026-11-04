@@ -44,7 +44,6 @@ export default class UkgHoursDashboardCached extends LightningElement {
     _pollTimer = null;
 
     activeTab = 'pw2';
-    selectedPeriod = 'last5';
     searchTerm = '';
 
     connectedCallback() {
@@ -879,10 +878,6 @@ export default class UkgHoursDashboardCached extends LightningElement {
     }
 
     // --- Period dropdown (stub - "Previous Quarter" is disabled in markup) ---
-
-    handlePeriodChange(event) {
-        this.selectedPeriod = event.target.value;
-    }
 
     // --- Client-side name search, shared across all three tabs ---
 
