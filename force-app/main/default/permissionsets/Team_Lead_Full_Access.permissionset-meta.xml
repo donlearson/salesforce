@@ -1028,10 +1028,6 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>UkgBillableHoursController</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>UkgBillableHoursControllerTest</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -1041,10 +1037,6 @@
     </classAccesses>
     <classAccesses>
         <apexClass>UkgDataControllerTest</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>UkgReviewDataController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>

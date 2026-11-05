@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <label>Director Dashboard Access</label>
-    <description>Grants access to the Director/Leadership View home page components (billable hours and time tracking dashboards) without granting System Administrator access.</description>
-    <hasActivationRequired>false</hasActivationRequired>
-    <classAccesses>
-        <apexClass>UkgDataController</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
     <classAccesses>
         <apexClass>UkgBillableHoursController</apexClass>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
     </classAccesses>
     <classAccesses>
         <apexClass>UkgBillableHoursW2Controller</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>UkgDataController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Grants access to the Director/Leadership View home page components (billable hours and time tracking dashboards) without granting System Administrator access.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Director Dashboard Access</label>
     <pageAccesses>
         <apexPage>DirectorDashboard</apexPage>
         <enabled>true</enabled>
