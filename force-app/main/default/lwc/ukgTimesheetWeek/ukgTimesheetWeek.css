@@ -1,0 +1,122 @@
+.nav {
+    display: flex;
+    align-items: center;
+}
+.date-pick {
+    width: 9.5rem;
+}
+.body {
+    position: relative;
+    min-height: 4rem;
+}
+.week-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.table-wrap {
+    overflow-x: auto;
+}
+.ts th,
+.ts td {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
+.ts .num {
+    text-align: right;
+    width: 3.75rem;
+    font-variant-numeric: tabular-nums;
+}
+.ts .weekend {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+.ts .total-col {
+    font-weight: 700;
+    width: 4.5rem;
+}
+.ts .name-col {
+    max-width: 20rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.day-date {
+    font-size: 0.7rem;
+    font-weight: 400;
+}
+.section td {
+    background: var(--slds-g-color-neutral-base-90, #e5e5e5);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.client-row {
+    cursor: pointer;
+}
+.chev {
+    margin-right: 0.35rem;
+}
+.project-row td {
+    font-size: 0.8rem;
+    color: var(--slds-g-color-neutral-base-30, #444);
+}
+.project-name {
+    padding-left: 2rem !important;
+}
+.subtotal th,
+.subtotal td {
+    font-weight: 700;
+    border-top: 1px solid var(--slds-g-color-neutral-base-80, #c9c9c9);
+}
+.grand th,
+.grand td {
+    font-weight: 700;
+    border-top: 2px solid var(--slds-g-color-neutral-base-50, #747474);
+    background: var(--slds-g-color-brand-base-95, #eef4ff);
+}
+
+.expand-all {
+    margin-left: auto;
+}
+.project-label,
+.project-detail {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.project-detail {
+    font-size: 0.72rem;
+    color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.pick-label {
+    font-size: 0.75rem;
+    color: var(--slds-g-color-neutral-base-50, #747474);
+    white-space: nowrap;
+}
+
+/* Column separation: read straight down each day */
+.ts .day {
+    text-align: center;
+    width: 4rem;
+    border-left: 1px solid var(--slds-g-color-neutral-base-80, #c9c9c9);
+}
+.ts thead .day {
+    text-align: center;
+}
+.ts .total-col {
+    border-left: 2px solid var(--slds-g-color-neutral-base-60, #939393);
+    text-align: center;
+}
+.ts .day.is-empty {
+    color: var(--slds-g-color-neutral-base-80, #c9c9c9);
+}
+.ts .day.col-hover,
+.ts thead .day.col-hover {
+    background: var(--slds-g-color-brand-base-95, #e8f1fc);
+}
+.ts thead .day.col-hover {
+    box-shadow: inset 0 -3px 0 var(--slds-g-color-brand-base-50, #0176d3);
+}

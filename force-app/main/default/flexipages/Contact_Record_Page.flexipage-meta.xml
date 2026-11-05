@@ -87,6 +87,12 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
+                <componentName>ukgTimesheetWeek</componentName>
+                <identifier>c_ukgTimesheetWeek</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
                 <componentName>ukgTimeTracker</componentName>
                 <identifier>c_ukgTimeTracker2</identifier>
                 <visibilityRule>

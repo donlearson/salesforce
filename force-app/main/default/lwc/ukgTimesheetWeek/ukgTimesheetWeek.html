@@ -1,0 +1,146 @@
+<template>
+    <lightning-card title="Weekly Time Sheet" icon-name="standard:timesheet">
+        <div slot="actions" class="nav">
+            <lightning-button-icon icon-name="utility:chevronleft" alternative-text="Previous week" title="Previous week" onclick={handlePrev} disabled={isLoading}></lightning-button-icon>
+            <lightning-button-icon icon-name="utility:chevronright" alternative-text="Next week" title="Next week" onclick={handleNext} disabled={isCurrentOrFuture}></lightning-button-icon>
+            <lightning-button label="This Week" onclick={handleThisWeek} disabled={isLoading} class="slds-m-left_x-small"></lightning-button>
+            <span class="pick-label slds-m-left_small">Week ending</span>
+            <lightning-input type="date" label="Week ending (Saturday)" variant="label-hidden" value={weekEnd} onchange={handleDatePick} class="date-pick slds-m-left_x-small"></lightning-input>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh" title="Refresh" onclick={handleRefresh} disabled={isLoading} class="slds-m-left_x-small"></lightning-button-icon>
+        </div>
+
+        <div class="slds-p-horizontal_small body">
+            <div class="week-line">
+                <span class="slds-text-heading_small">{weekLabel}</span>
+                <span class="slds-text-color_weak">{weekRange}</span>
+                <template lwc:if={approvalLabel}>
+                    <span class={approvalBadgeClass}>{approvalLabel}</span>
+                </template>
+                <template lwc:if={hasClients}>
+                    <lightning-button variant="base" label={expandAllLabel} onclick={toggleAll} class="expand-all"></lightning-button>
+                </template>
+            </div>
+
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading time from UKG" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:if={error}>
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">{error}</div>
+            </template>
+
+            <template lwc:if={showNoUkgId}>
+                <p class="slds-text-color_weak">This contact has no UKG ID, so there is no time to show.</p>
+            </template>
+
+            <template lwc:if={showEmpty}>
+                <p class="slds-text-color_weak">No time entered in UKG for this week.</p>
+            </template>
+
+            <template lwc:if={hasData}>
+                <div class="table-wrap">
+                    <table class="slds-table slds-table_bordered slds-table_cell-buffer ts" onmouseover={handleHover} onmouseleave={clearHover}>
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col" class="name-col">Account</th>
+                                <template for:each={dayHeaders} for:item="d">
+                                    <th key={d.key} scope="col" class={d.className} data-col={d.col}>
+                                        <div>{d.name}</div>
+                                        <div class="slds-text-color_weak day-date">{d.date}</div>
+                                    </th>
+                                </template>
+                                <th scope="col" class="num total-col">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template lwc:if={hasClients}>
+                                <tr class="section"><td colspan="9">Billable</td></tr>
+                                <template for:each={clientRows} for:item="c">
+                                    <tr key={c.key} class="client-row" data-key={c.key} onclick={toggleClient}>
+                                        <th scope="row" class="name-col">
+                                            <template lwc:if={c.canExpand}>
+                                                <lightning-icon icon-name={c.icon} size="xx-small" class="chev"></lightning-icon>
+                                            </template>
+                                            <template lwc:if={c.hasAccount}>
+                                                <a href="#" data-id={c.accountId} onclick={openAccount} title={c.name}>{c.name}</a>
+                                            </template>
+                                            <template lwc:else>
+                                                <span title={c.name}>{c.name}</span>
+                                            </template>
+                                        </th>
+                                        <template for:each={c.cells} for:item="cell">
+                                            <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                        </template>
+                                        <td class="num total-col">{c.total}</td>
+                                    </tr>
+                                    <template for:each={c.projects} for:item="p">
+                                        <tr key={p.key} class="project-row">
+                                            <td class="name-col project-name" title={p.name}>
+                                                <div class="project-label">{p.name}</div>
+                                                <template lwc:if={p.detail}>
+                                                    <div class="project-detail" title={p.detail}>{p.detail}</div>
+                                                </template>
+                                            </td>
+                                            <template for:each={p.cells} for:item="cell">
+                                                <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                            </template>
+                                            <td class="num total-col">{p.total}</td>
+                                        </tr>
+                                    </template>
+                                </template>
+                                <tr class="subtotal">
+                                    <th scope="row" class="name-col">Billable total</th>
+                                    <template for:each={billableTotalCells} for:item="cell">
+                                        <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                    </template>
+                                    <td class="num total-col">{billableTotal}</td>
+                                </tr>
+                            </template>
+
+                            <template lwc:if={hasNonBillable}>
+                                <tr class="section"><td colspan="9">Non-billable &amp; time off</td></tr>
+                                <template for:each={nonBillableRows} for:item="r">
+                                    <tr key={r.key}>
+                                        <th scope="row" class="name-col" title={r.name}>{r.name}</th>
+                                        <template for:each={r.cells} for:item="cell">
+                                            <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                        </template>
+                                        <td class="num total-col">{r.total}</td>
+                                    </tr>
+                                </template>
+                                <tr class="subtotal">
+                                    <th scope="row" class="name-col">Non-billable total</th>
+                                    <template for:each={nonBillableTotalCells} for:item="cell">
+                                        <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                    </template>
+                                    <td class="num total-col">{nonBillableTotal}</td>
+                                </tr>
+                            </template>
+
+                            <tr class="grand">
+                                <th scope="row" class="name-col">Total hours</th>
+                                <template for:each={dayTotalCells} for:item="cell">
+                                    <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                </template>
+                                <td class="num total-col">{weekTotal}</td>
+                            </tr>
+
+                            <template lwc:if={hasOnCall}>
+                                <tr class="section"><td colspan="9">On-call units (not counted in hours)</td></tr>
+                                <template for:each={onCallRows} for:item="r">
+                                    <tr key={r.key}>
+                                        <th scope="row" class="name-col" title={r.name}>{r.name}</th>
+                                        <template for:each={r.cells} for:item="cell">
+                                            <td key={cell.key} class={cell.className} data-col={cell.col}>{cell.value}</td>
+                                        </template>
+                                        <td class="num total-col">{r.total}</td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>
