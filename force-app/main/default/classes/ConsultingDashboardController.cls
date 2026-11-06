@@ -15,6 +15,13 @@ public with sharing class ConsultingDashboardController {
         'Senior Team Lead, Consulting Services'
     };
 
+    // Users in these roles appear in the team lead picker. Driven by role rather than
+    // profile so a profile change doesn't drop someone from the list.
+    private static final Set<String> TEAM_LEAD_ROLES = new Set<String>{
+        'Team_Lead',
+        'Support_Center_Manager'
+    };
+
     private static Id taskRecordTypeId() {
         return [SELECT Id FROM RecordType WHERE SObjectType = 'Task' AND DeveloperName = 'Associate_Communication' LIMIT 1].Id;
     }
@@ -109,7 +116,7 @@ public with sharing class ConsultingDashboardController {
         for (User u : [
             SELECT Id, Name
             FROM User
-            WHERE Profile.Name = 'Team Lead' AND IsActive = TRUE
+            WHERE UserRole.DeveloperName IN :TEAM_LEAD_ROLES AND IsActive = TRUE
             ORDER BY Name
         ]) {
             options.add(new TeamLeadOption(u.Name, u.Id));
