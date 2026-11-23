@@ -267,6 +267,87 @@ private class UkgBillableHoursW2ControllerTest {
         System.assertEquals(10.0, sum.currentMonthHours, 'Expected Code 217 hours to be excluded from currentMonthHours');
     }
 
+    // Vacation Hours is the report's last column (index 12, after Date Terminated) and is
+    // counted in the APL bucket. Non-vacation rows carry '-' there, as the real report does.
+    public class VacationMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            HttpResponse res = new HttpResponse();
+            if (req.getEndpoint().contains('/login')) {
+                res.setBody('{"token": "test_token"}');
+                res.setStatusCode(200);
+            } else {
+                Date today = Date.today();
+                Date sunday = today.toStartOfWeek();
+                Integer diff = sunday.daysBetween(today);
+                Date sat = today.addDays(diff == 6 ? 0 : -(diff + 1));
+                String satStr = DateTime.newInstance(sat, Time.newInstance(0, 0, 0, 0)).format('MM/dd/yyyy');
+
+                String csv = 'L,F,Start,End,H,ID,Code,APL,Holiday,Profile,CounterDate,DateTerminated,Vacation\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',30.0,EMP001,100,-,-,Billable Recording Time - Vacation/Sick,' + satStr + ',,-\n' +
+                             'Alberts,Tom,01/01/24,' + satStr + ',-,EMP001,406 - Vacation,-,-,Billable Recording Time - Vacation/Sick,' + satStr + ',,8.0\n' +
+                             'Smith,Jane,01/01/24,' + satStr + ',30.0,EMP002,100,-,-,Billable Recording Time - APL,' + satStr + ',,-\n' +
+                             'Smith,Jane,01/01/24,' + satStr + ',-,EMP002,405 - All Purpose Leave,4.0,-,Billable Recording Time - APL,' + satStr + ',,-';
+                res.setBody(csv);
+                res.setStatusCode(200);
+            }
+            return res;
+        }
+    }
+
+    @isTest
+    static void testVacationHoursCountedAsTimeOff() {
+        Test.setMock(HttpCalloutMock.class, new VacationMock());
+        Test.startTest();
+        UkgBillableHoursW2Controller.BenchTimeWrapper result = UkgBillableHoursW2Controller.getTimeEntries(null);
+        Test.stopTest();
+
+        System.assertEquals(2, result.summaries.size(), 'Expected a Vacation/Sick associate and an APL associate, both PW2');
+        for (UkgBillableHoursW2Controller.UserWeeklyBillableSummary sum : result.summaries) {
+            System.assertEquals(30.0, sum.w1Hours, 'Time off must not change billable hours for ' + sum.userName);
+            if (sum.userName == 'Alberts, Tom') {
+                System.assertEquals(8.0, sum.w1_aplHours, 'Expected Vacation Hours to count as time off');
+                System.assertEquals(8.0, sum.total5WeekAplHours, 'Expected Vacation Hours in the 5-week time off total');
+            } else {
+                System.assertEquals(4.0, sum.w1_aplHours, 'Expected APL hours to be unchanged');
+            }
+        }
+    }
+
+    // Monthly path: a Vacation row dated on the as-of date lands in the current month's
+    // time off bucket.
+    public class MonthlyVacationMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            HttpResponse res = new HttpResponse();
+            if (req.getEndpoint().contains('/login')) {
+                res.setBody('{"token": "test_token"}');
+                res.setStatusCode(200);
+            } else {
+                Date referenceAsOfDate = computeReferenceAsOfDateForTest();
+                String asOfDateStr = DateTime.newInstance(referenceAsOfDate, Time.newInstance(0, 0, 0, 0)).format('MM/dd/yyyy');
+
+                String csv = 'L,F,Start,End,H,ID,Code,APL,Holiday,Profile,CounterDate,DateTerminated,Vacation\n' +
+                             'Alberts,Tom,01/01/24,01/06/24,10.0,EMP001,100,-,-,Billable Recording Time - Vacation/Sick,' + asOfDateStr + ',,-\n' +
+                             'Alberts,Tom,01/01/24,01/06/24,-,EMP001,406 - Vacation,-,-,Billable Recording Time - Vacation/Sick,' + asOfDateStr + ',,8.0';
+                res.setBody(csv);
+                res.setStatusCode(200);
+            }
+            return res;
+        }
+    }
+
+    @isTest
+    static void testMonthlyVacationHoursCountedAsTimeOff() {
+        Test.setMock(HttpCalloutMock.class, new MonthlyVacationMock());
+        Test.startTest();
+        UkgBillableHoursW2Controller.MonthlyCombinedWrapper monthly = UkgBillableHoursW2Controller.getMonthlyTimeEntries(null);
+        Test.stopTest();
+
+        System.assertEquals(1, monthly.pw2Summaries.size(), 'Expected one PW2 associate');
+        UkgBillableHoursW2Controller.MonthlyBillableSummary sum = monthly.pw2Summaries[0];
+        System.assertEquals(10.0, sum.currentMonthHours, 'Time off must not change billable hours');
+        System.assertEquals(8.0, sum.currentMonthAplHours, 'Expected Vacation Hours in the current month time off bucket');
+    }
+
     @isTest
     static void testApiErrors() {
         Contact c = [SELECT Id FROM Contact LIMIT 1];

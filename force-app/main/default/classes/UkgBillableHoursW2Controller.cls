@@ -72,7 +72,8 @@ public with sharing class UkgBillableHoursW2Controller {
         @AuraEnabled public Decimal total15hSegments { get; set; }
         @AuraEnabled public Decimal total24hSegments { get; set; }
 
-        // Time Off (APL = All Purpose Leave, activity code 405; Holiday = activity code 404).
+        // Time Off (APL = All Purpose Leave, activity code 405, plus Vacation, code 406, which
+        // is reported in its own column but counted in the APL hours; Holiday = activity code 404).
         // Reported separately from w1Hours..w5Hours (billable/worked hours) so time off never
         // inflates billable totals - it's used only for utilization math on the client.
         @AuraEnabled public Decimal w1_aplHours { get; set; }
@@ -206,6 +207,18 @@ public with sharing class UkgBillableHoursW2Controller {
     // "-XX" variant suffix.
     private static Boolean isCode217(String activityCode) {
         return activityCode != null && activityCode.startsWith('217');
+    }
+
+    // Paid time off for the APL bucket: All Purpose Leave Hours (index 7) plus Vacation
+    // Hours (index 12, appended after Date Terminated). Newer associates earn Vacation
+    // instead of APL, so the two share one bucket. Vacation is only read when the
+    // column is present, so a report without it behaves as before.
+    private static Decimal parseTimeOffHours(List<String> values) {
+        Decimal hours = parseDecimalSafe(values[7]);
+        if (values.size() >= 13) {
+            hours += parseDecimalSafe(values[12]);
+        }
+        return hours;
     }
 
     private static void loadCredentials() {
@@ -695,10 +708,11 @@ public with sharing class UkgBillableHoursW2Controller {
                         }
 
                         // Time Off columns: APL (index 7) then Holiday (index 8), appended after
-                        // Activity Code. Parsed independently of the activity code branching above -
-                        // guarded by values.size() so this stays backward-compatible.
+                        // Activity Code; Vacation Hours (index 12) is folded into APL. Parsed
+                        // independently of the activity code branching above - guarded by
+                        // values.size() so this stays backward-compatible.
                         if (values.size() >= 8) {
-                            Decimal aplHours = parseDecimalSafe(values[7]);
+                            Decimal aplHours = parseTimeOffHours(values);
                             if (aplHours != 0) {
                                 if (!raw.rawAplHoursData.containsKey(fullName)) {
                                     raw.rawAplHoursData.put(fullName, new Map<String, Decimal>());
@@ -890,7 +904,7 @@ public with sharing class UkgBillableHoursW2Controller {
                         Decimal hours = parseDecimalSafe(values[4]);
                         String employeeId = values[5].trim();
                         String activityCode = values[6].trim();
-                        Decimal aplHours = parseDecimalSafe(values[7]);
+                        Decimal aplHours = parseTimeOffHours(values);
 
                         if (String.isNotBlank(employeeId)) {
                             raw.userToEmployeeIdMap.put(fullName, employeeId);

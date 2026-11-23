@@ -694,7 +694,7 @@ export default class UkgHoursDashboard extends LightningElement {
                 return {
                     ...s,
                     utilizationDisplay: `${((billableHours / capacity) * 100).toFixed(0)}%`,
-                    timeOffNote: aplHours > 0 ? ` (+${aplHours.toFixed(1)} APL)` : ''
+                    timeOffNote: aplHours > 0 ? ` (+${aplHours.toFixed(1)} APL/Vacation)` : ''
                 };
             })
             .sort((a, b) => this.individualBillableHours(a) - this.individualBillableHours(b));
