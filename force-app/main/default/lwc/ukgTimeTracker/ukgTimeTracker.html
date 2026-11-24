@@ -22,6 +22,9 @@
         </div>
 
         <div class="slds-p-horizontal_small slds-p-vertical_x-small">
+            <template lwc:if={asOfLabel}>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">{asOfLabel}</p>
+            </template>
 
             <!-- Loading Spinner -->
             <template if:true={isLoading}>

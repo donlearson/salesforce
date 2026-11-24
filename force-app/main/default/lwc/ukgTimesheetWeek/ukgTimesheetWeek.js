@@ -1,6 +1,7 @@
 import { LightningElement, api } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import getWeek from '@salesforce/apex/UkgTimesheetController.getWeek';
+import getLiveWeek from '@salesforce/apex/UkgTimesheetController.getLiveWeek';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -66,12 +67,15 @@ export default class UkgTimesheetWeek extends NavigationMixin(LightningElement) 
         this.load();
     }
 
-    async load(weekStart) {
+    // Reads the stored week (no UKG call). live = true asks UKG directly, only when
+    // someone clicks "Load from UKG" for a week that isn't stored.
+    async load(weekStart, live = false) {
         this.isLoading = true;
         this.error = undefined;
         try {
             const wasAllExpanded = this.allExpanded;
-            this.week = await getWeek({ contactId: this.recordId, weekStart: weekStart || null });
+            const fetchWeek = live ? getLiveWeek : getWeek;
+            this.week = await fetchWeek({ contactId: this.recordId, weekStart: weekStart || null });
             this.expanded = wasAllExpanded ? new Set(this.week.clients.map((c) => c.key)) : new Set();
             this.weekStart = this.week.weekStart;
             this.weekEnd = this.week.weekEnd;
@@ -128,6 +132,10 @@ export default class UkgTimesheetWeek extends NavigationMixin(LightningElement) 
         this.load(this.weekStart);
     }
 
+    handleLoadLive() {
+        this.load(this.weekStart, true);
+    }
+
     // ---- state ----
 
     get showNoUkgId() {
@@ -139,7 +147,33 @@ export default class UkgTimesheetWeek extends NavigationMixin(LightningElement) 
     }
 
     get showEmpty() {
-        return this.week && this.week.hasUkgId !== false && !this.hasData;
+        return this.week && this.week.hasUkgId !== false && !this.notCached && !this.hasData;
+    }
+
+    get notCached() {
+        return this.week && this.week.hasUkgId !== false && this.week.source === 'NOT_CACHED';
+    }
+
+    get notCachedMessage() {
+        return this.week && this.week.inCacheWindow
+            ? "This week hasn't been loaded into Salesforce yet."
+            : 'Salesforce keeps the last 8 weeks of time. This week is older, so it has to come from UKG.';
+    }
+
+    get asOfLabel() {
+        if (!this.week || !this.week.refreshedAt) return '';
+        const when = new Date(this.week.refreshedAt).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+        return this.week.source === 'LIVE' ? `Loaded live from UKG ${when}` : `As of ${when}`;
+    }
+
+    get isStale() {
+        return this.week && this.week.stale;
     }
 
     get approvalLabel() {

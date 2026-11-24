@@ -8,6 +8,11 @@
         <apexClass>UkgTimesheetController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <!-- Bench and billable trackers read the cached dashboard snapshots -->
+    <classAccesses>
+        <apexClass>UkgHoursTabCacheController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <!-- UKG Bench Time Summary (ukgTimeTracker) -->
     <classAccesses>
         <apexClass>UkgDataController</apexClass>
