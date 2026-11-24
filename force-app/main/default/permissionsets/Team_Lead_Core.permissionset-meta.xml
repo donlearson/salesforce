@@ -17,18 +17,6 @@
         <visible>true</visible>
     </applicationVisibilities>
     <classAccesses>
-        <apexClass>UkgBillableHoursController</apexClass>
-        <enabled>false</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>UkgReviewDataController</apexClass>
-        <enabled>false</enabled>
-    </classAccesses>
-    <classAccesses>
-        <apexClass>UkgTimesheetController</apexClass>
-        <enabled>false</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>DirectorDashboardController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -49,12 +37,16 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>UkgBillableHoursW2Controller</apexClass>
-        <enabled>true</enabled>
+        <apexClass>UkgBillableHoursController</apexClass>
+        <enabled>false</enabled>
     </classAccesses>
     <classAccesses>
         <apexClass>UkgDataController</apexClass>
         <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>UkgReviewDataController</apexClass>
+        <enabled>false</enabled>
     </classAccesses>
     <classAccesses>
         <apexClass>ers_DatatableController</apexClass>
@@ -68,7 +60,7 @@
         <apexClass>ers_QueryNRecords</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>DRAFT slimmed Team Lead access: read-only core CRM, task logging, org-owned Apex/VF, dashboards. Excludes managed-package access (Dialpad, Zoom, DocuSign, Leadfeeder etc). Layouts and default app stay on the Profile.</description>
+    <description>Slimmed Team Lead access: read-only core CRM, task logging, org-owned Apex/VF, dashboards. Excludes managed-package access (Dialpad, Zoom, DocuSign, Leadfeeder etc). Layouts and default app stay on the Profile.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>Account.AMS_Agreement_End_Date__c</field>
@@ -2626,6 +2618,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Opportunity.Estimated_Revenue__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Opportunity.ExpectedRevenue</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -2816,6 +2813,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Opportunity_Resource_Need__c.Proposed_Associate_List__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Opportunity_Resource_Need__c.Proposed_Associate_Type__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -2842,6 +2844,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Opportunity_Resource_Need__c.Travel_Required__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity_Resource_Need__c.Update_Flag__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -5649,7 +5656,7 @@
         <flow>Oppt_Feedback_Form_Flow</flow>
     </flowAccesses>
     <hasActivationRequired>false</hasActivationRequired>
-    <label>Team Lead Core (DRAFT)</label>
+    <label>Team Lead Core</label>
     <objectPermissions>
         <allowCreate>false</allowCreate>
         <allowDelete>false</allowDelete>
@@ -5938,6 +5945,10 @@
     </userPermissions>
     <userPermissions>
         <enabled>true</enabled>
+        <name>AllowViewKnowledge</name>
+    </userPermissions>
+    <userPermissions>
+        <enabled>true</enabled>
         <name>ApexRestServices</name>
     </userPermissions>
     <userPermissions>
@@ -6095,6 +6106,10 @@
     <userPermissions>
         <enabled>true</enabled>
         <name>SelectFilesFromSalesforce</name>
+    </userPermissions>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>SendExternalEmailAvailable</name>
     </userPermissions>
     <userPermissions>
         <enabled>true</enabled>

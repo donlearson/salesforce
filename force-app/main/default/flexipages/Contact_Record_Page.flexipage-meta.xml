@@ -94,7 +94,7 @@
         <itemInstances>
             <componentInstance>
                 <componentName>ukgTimeTracker</componentName>
-                <identifier>c_ukgTimeTracker2</identifier>
+                <identifier>c_ukgTimeTracker</identifier>
                 <visibilityRule>
                     <booleanFilter>1 OR 2 OR 3 OR 4</booleanFilter>
                     <criteria>
@@ -145,7 +145,7 @@
                 <identifier>c_ukgCustomReviewSubmit</identifier>
             </componentInstance>
         </itemInstances>
-        <name>Facet-a9d7f83c-3148-4903-a356-4ebe35e5fade</name>
+        <name>Facet-8d023d6f-01d2-43bb-8a73-4cd3fbb7bac0</name>
         <type>Facet</type>
     </flexiPageRegions>
     <flexiPageRegions>
@@ -203,7 +203,7 @@
             <componentInstance>
                 <componentInstanceProperties>
                     <name>body</name>
-                    <value>Facet-a9d7f83c-3148-4903-a356-4ebe35e5fade</value>
+                    <value>Facet-8d023d6f-01d2-43bb-8a73-4cd3fbb7bac0</value>
                 </componentInstanceProperties>
                 <componentInstanceProperties>
                     <name>title</name>
@@ -211,6 +211,44 @@
                 </componentInstanceProperties>
                 <componentName>flexipage:tab</componentName>
                 <identifier>flexipage_tab2</identifier>
+                <visibilityRule>
+                    <booleanFilter>1 OR 2 OR 3 OR 4 OR 5 OR 6 OR 7</booleanFilter>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consultant, Application Services</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consultant, Project Management</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consultant, Program Management</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consultant, Support Center</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consultant Hourly W-2</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>1099 - Contractor</rightValue>
+                    </criteria>
+                    <criteria>
+                        <leftValue>{!Record.HPG_Title__c}</leftValue>
+                        <operator>EQUAL</operator>
+                        <rightValue>Senior Consulting Manager</rightValue>
+                    </criteria>
+                </visibilityRule>
             </componentInstance>
         </itemInstances>
         <mode>Replace</mode>
