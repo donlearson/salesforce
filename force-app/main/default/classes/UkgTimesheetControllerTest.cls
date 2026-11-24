@@ -46,7 +46,7 @@ private class UkgTimesheetControllerTest {
         Contact c = [SELECT Id FROM Contact LIMIT 1];
 
         Test.startTest();
-        UkgTimesheetController.TimesheetWeek w = UkgTimesheetController.getWeek(c.Id, '2026-10-28');
+        UkgTimesheetController.TimesheetWeek w = UkgTimesheetController.getLiveWeek(c.Id, '2026-10-28');
         Test.stopTest();
 
         System.assertEquals('2026-10-25', w.weekStart);
@@ -68,6 +68,7 @@ private class UkgTimesheetControllerTest {
         System.assertEquals(1, w.onCall.size());
         System.assertEquals(9.0, w.dayTotals[2], 'Tuesday: PTO + internal');
         System.assertEquals(1, w.approvalStates.size());
+        System.assertEquals('LIVE', w.source);
     }
 
     @isTest
@@ -85,7 +86,7 @@ private class UkgTimesheetControllerTest {
         Contact c = [SELECT Id FROM Contact WHERE UKG_ID__c = '111' LIMIT 1];
         Boolean threw = false;
         try {
-            UkgTimesheetController.getWeek(c.Id, '2026-10-31');
+            UkgTimesheetController.getLiveWeek(c.Id, '2026-10-31');
         } catch (AuraHandledException e) {
             threw = true;
         }
@@ -122,6 +123,22 @@ private class UkgTimesheetControllerTest {
         System.assertEquals('Archbold Medical Center', UkgTimesheetController.stripCompanySuffix('Archbold Medical Center, Inc'));
         System.assertEquals('Christiana Care Health Services', UkgTimesheetController.stripCompanySuffix('Christiana Care Health Services, Inc.'));
         System.assertEquals('Northbay Healthcare', UkgTimesheetController.stripCompanySuffix('Northbay Healthcare'));
+    }
+
+    @isTest
+    static void noUkgIdOnLiveWeekSkipsCallout() {
+        Contact c = new Contact(LastName = 'NoId');
+        insert c;
+        UkgTimesheetController.TimesheetWeek w = UkgTimesheetController.getLiveWeek(c.Id, null);
+        System.assertEquals(false, w.hasUkgId);
+    }
+
+    @isTest
+    static void keepsLineBreaksInsideQuotedValues() {
+        List<String> records = UkgTimesheetController.splitLines('"a","b"\r\n"line one\nline two","x"\n"c","d"\n');
+        System.assertEquals(3, records.size());
+        System.assertEquals('"line one\nline two","x"', records[1]);
+        System.assertEquals('line one\nline two', UkgTimesheetController.parseCsvLine(records[1])[0]);
     }
 
     @isTest

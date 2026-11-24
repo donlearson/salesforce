@@ -1,5 +1,5 @@
 import { LightningElement, api } from 'lwc';
-import getTimeEntries from '@salesforce/apex/UkgDataController.getTimeEntries';
+import getTimeEntries from '@salesforce/apex/UkgHoursTabCacheController.getBenchTimeEntries';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
 /**
@@ -17,6 +17,9 @@ export default class UkgTimeTracker extends LightningElement {
     isLoading = true;
     error = null;
     hasData = false;
+    // Data comes from the snapshot stored in Salesforce (refreshed from UKG on a schedule).
+    refreshedAt = null;
+    stale = false;
 
     connectedCallback() {
         this.fetchBenchSummaries();
@@ -33,7 +36,9 @@ export default class UkgTimeTracker extends LightningElement {
 
         getTimeEntries({ contactId: this.recordId })
             .then(wrapper => {
-                this.weekEndDates = wrapper.weekEndDates; 
+                this.weekEndDates = wrapper.weekEndDates || [];
+                this.refreshedAt = wrapper.refreshedAt;
+                this.stale = wrapper.stale === true;
                 
                 // Transformation: Prepare data for the datatable.
                 const summaries = wrapper.summaries || [];
@@ -106,6 +111,20 @@ export default class UkgTimeTracker extends LightningElement {
 
     get showTable() {
         return this.hasData && !this.isLoading && !this.error && this.weekEndDates.length > 0;
+    }
+
+    get asOfLabel() {
+        if (!this.refreshedAt) return '';
+        const when = new Date(this.refreshedAt).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+        return this.stale
+            ? `As of ${when} · The latest update from UKG failed, so this may be out of date.`
+            : `As of ${when}`;
     }
 
     get showNoData() {

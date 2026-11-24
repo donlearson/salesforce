@@ -1,14 +1,17 @@
 /**
  * UkgTimesheetController
- * Backs the ukgTimesheetWeek LWC on the Contact record page. Pulls one Sunday-
- * Saturday week from the UKG Review report (123617418), filtered by the
- * Contact's UKG_ID__c (EmplAccountId), and pivots it into:
+ * Backs the ukgTimesheetWeek LWC on the Contact record page. Shows one Sunday-
+ * Saturday week of the UKG Review report (123617418) for the Contact's UKG_ID__c
+ * (EmplAccountId), pivoted into:
  *   - Billable hours by client (Project New Name (1)) x day, with project detail
  *   - Non-billable / time off by activity code (or time-off name) x day
  *   - On-call units by activity code x day (kept out of hour totals)
  * Billable / non-billable / on-call rules match UkgReviewDataController.
  * Client names are matched to Salesforce Accounts by exact name so each client
  * row can link to its Account.
+ *
+ * getWeek reads the stored weeks in UkgTimesheetCache (no UKG call). getLiveWeek
+ * calls UKG directly and is only used when someone asks for a week that isn't stored.
  */
 public with sharing class UkgTimesheetController {
 
@@ -37,6 +40,10 @@ public with sharing class UkgTimesheetController {
         @AuraEnabled public Decimal weekTotal = 0;
         @AuraEnabled public List<String> approvalStates = new List<String>();
         @AuraEnabled public Boolean hasTaskColumn = false;
+        @AuraEnabled public String source;             // CACHE, LIVE or NOT_CACHED
+        @AuraEnabled public Datetime refreshedAt;      // when this data came from UKG
+        @AuraEnabled public Boolean stale = false;     // latest cache refresh failed
+        @AuraEnabled public Boolean inCacheWindow = false;
     }
 
     public class ClientRow {
@@ -83,24 +90,67 @@ public with sharing class UkgTimesheetController {
     @AuraEnabled
     public static TimesheetWeek getWeek(Id contactId, String weekStart) {
         Date sunday = resolveWeekStart(weekStart);
-        TimesheetWeek result = new TimesheetWeek();
-        result.weekStart = formatDate(sunday);
-        result.weekEnd = formatDate(sunday.addDays(6));
-        for (Integer i = 0; i < 7; i++) {
-            result.days.add(formatDate(sunday.addDays(i)));
+        TimesheetWeek result = newWeek(sunday);
+        String ukgId = ukgIdFor(contactId);
+        if (ukgId == null) {
+            result.hasUkgId = false;
+            return result;
         }
 
-        List<Contact> contacts = [SELECT UKG_ID__c FROM Contact WHERE Id = :contactId LIMIT 1];
-        if (contacts.isEmpty() || String.isBlank(contacts[0].UKG_ID__c)) {
+        UkgTimesheetCache.CachedWeek cached = UkgTimesheetCache.read(sunday, ukgId);
+        if (!cached.cached) {
+            result.source = 'NOT_CACHED';
+            return result;
+        }
+        result.source = 'CACHE';
+        result.refreshedAt = cached.refreshedAt;
+        result.stale = cached.stale;
+        if (cached.csv != null) {
+            buildWeek(result, cached.csv, sunday);
+        }
+        return result;
+    }
+
+    /**
+     * Same as getWeek but straight from UKG (one login + one report call). Used only
+     * when a week isn't in the cache, e.g. older than the weeks kept.
+     */
+    @AuraEnabled
+    public static TimesheetWeek getLiveWeek(Id contactId, String weekStart) {
+        Date sunday = resolveWeekStart(weekStart);
+        TimesheetWeek result = newWeek(sunday);
+        String ukgId = ukgIdFor(contactId);
+        if (ukgId == null) {
             result.hasUkgId = false;
             return result;
         }
 
         UKG_Integration_Settings__mdt settings = loadSettings();
         String token = login(settings);
-        String csv = fetchReport(token, settings.Company_Short_Name__c, contacts[0].UKG_ID__c, sunday, sunday.addDays(6));
+        String csv = fetchReport(token, settings.Company_Short_Name__c, ukgId, sunday, sunday.addDays(6));
+        result.source = 'LIVE';
+        result.refreshedAt = Datetime.now();
         buildWeek(result, csv, sunday);
         return result;
+    }
+
+    private static TimesheetWeek newWeek(Date sunday) {
+        TimesheetWeek result = new TimesheetWeek();
+        result.weekStart = formatDate(sunday);
+        result.weekEnd = formatDate(sunday.addDays(6));
+        for (Integer i = 0; i < 7; i++) {
+            result.days.add(formatDate(sunday.addDays(i)));
+        }
+        result.inCacheWindow = UkgTimesheetCache.isWithinCacheWindow(sunday);
+        return result;
+    }
+
+    private static String ukgIdFor(Id contactId) {
+        List<Contact> contacts = [SELECT UKG_ID__c FROM Contact WHERE Id = :contactId LIMIT 1];
+        if (contacts.isEmpty() || String.isBlank(contacts[0].UKG_ID__c)) {
+            return null;
+        }
+        return contacts[0].UKG_ID__c.trim();
     }
 
     // ---------------------------------------------------------------------
@@ -123,13 +173,13 @@ public with sharing class UkgTimesheetController {
         return toSunday(anchor);
     }
 
-    private static Date toSunday(Date d) {
+    public static Date toSunday(Date d) {
         Integer offset = Math.mod(SUNDAY_REFERENCE.daysBetween(d), 7);
         if (offset < 0) offset += 7;
         return d.addDays(-offset);
     }
 
-    private static String formatDate(Date d) {
+    public static String formatDate(Date d) {
         return DateTime.newInstance(d, Time.newInstance(0, 0, 0, 0)).format('yyyy-MM-dd');
     }
 
@@ -141,7 +191,7 @@ public with sharing class UkgTimesheetController {
     // UKG callouts
     // ---------------------------------------------------------------------
 
-    private static UKG_Integration_Settings__mdt loadSettings() {
+    public static UKG_Integration_Settings__mdt loadSettings() {
         List<UKG_Integration_Settings__mdt> rows = [
             SELECT Api_Key__c, Login_Username__c, Login_Password__c, Company_Short_Name__c
             FROM UKG_Integration_Settings__mdt
@@ -154,7 +204,7 @@ public with sharing class UkgTimesheetController {
         return rows[0];
     }
 
-    private static String login(UKG_Integration_Settings__mdt s) {
+    public static String login(UKG_Integration_Settings__mdt s) {
         HttpRequest req = new HttpRequest();
         req.setEndpoint('callout:UKG_BASE_API/ta/rest/v1/login');
         req.setMethod('POST');
@@ -186,22 +236,10 @@ public with sharing class UkgTimesheetController {
         return token;
     }
 
-    private static String fetchReport(String token, String companyShortName, String ukgAccountId, Date fromDate, Date toDate) {
-        HttpRequest req = new HttpRequest();
-        req.setEndpoint('callout:UKG_BASE_API/ta/rest/v1/report/saved/' + REPORT_ID);
-        req.setMethod('POST');
-        req.setHeader('Content-Type', 'application/json');
-        req.setHeader('Accept', 'text/csv');
-        req.setHeader('Authorization', 'Bearer ' + token);
-        req.setBody(JSON.serialize(new Map<String, Object>{
+    /** ukgAccountId blank = every associate (used by UkgTimesheetCache). */
+    public static String fetchReport(String token, String companyShortName, String ukgAccountId, Date fromDate, Date toDate) {
+        Map<String, Object> body = new Map<String, Object>{
             'company' => new Map<String, String>{ 'short_name' => companyShortName },
-            'filters' => new List<Object>{
-                new Map<String, Object>{
-                    'field_name' => 'EmplAccountId',
-                    'operator' => '=',
-                    'values' => new List<String>{ ukgAccountId }
-                }
-            },
             'selectors' => new List<Object>{
                 new Map<String, Object>{
                     'type' => 'Date',
@@ -213,7 +251,24 @@ public with sharing class UkgTimesheetController {
                     }
                 }
             }
-        }));
+        };
+        if (String.isNotBlank(ukgAccountId)) {
+            body.put('filters', new List<Object>{
+                new Map<String, Object>{
+                    'field_name' => 'EmplAccountId',
+                    'operator' => '=',
+                    'values' => new List<String>{ ukgAccountId }
+                }
+            });
+        }
+
+        HttpRequest req = new HttpRequest();
+        req.setEndpoint('callout:UKG_BASE_API/ta/rest/v1/report/saved/' + REPORT_ID);
+        req.setMethod('POST');
+        req.setHeader('Content-Type', 'application/json');
+        req.setHeader('Accept', 'text/csv');
+        req.setHeader('Authorization', 'Bearer ' + token);
+        req.setBody(JSON.serialize(body));
         req.setTimeout(60000);
 
         HttpResponse res;
@@ -496,24 +551,30 @@ public with sharing class UkgTimesheetController {
         }
     }
 
-    // Line splitting without regex (avoids "Regex too complicated" on large CSVs).
-    private static List<String> splitLines(String data) {
-        List<String> lines = new List<String>();
-        if (data == null) return lines;
+    // Splits CSV text into records without regex (avoids "Regex too complicated" on
+    // large CSVs). A line break inside a quoted value (e.g. a multi-line comment)
+    // stays part of its record.
+    public static List<String> splitLines(String data) {
+        List<String> records = new List<String>();
+        if (data == null) return records;
+        String pending = null;
         Integer start = 0;
-        Integer idx = data.indexOf('\n');
-        while (idx != -1) {
-            lines.add(data.substring(start, idx).removeEnd('\r'));
-            start = idx + 1;
-            idx = data.indexOf('\n', start);
+        while (start < data.length()) {
+            Integer idx = data.indexOf('\n', start);
+            String line = (idx == -1 ? data.substring(start) : data.substring(start, idx)).removeEnd('\r');
+            start = idx == -1 ? data.length() : idx + 1;
+            pending = pending == null ? line : pending + '\n' + line;
+            if (Math.mod(pending.countMatches('"'), 2) == 0) {
+                records.add(pending);
+                pending = null;
+            }
         }
-        if (start < data.length()) lines.add(data.substring(start).removeEnd('\r'));
-        return lines;
+        if (pending != null) records.add(pending);
+        return records;
     }
 
     // Quote-aware CSV line parser: handles commas inside quotes and "" escapes.
-    @TestVisible
-    private static List<String> parseCsvLine(String line) {
+    public static List<String> parseCsvLine(String line) {
         List<String> out = new List<String>();
         Integer n = line.length();
         Integer i = 0;

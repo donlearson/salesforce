@@ -6,7 +6,7 @@
             <lightning-button label="This Week" onclick={handleThisWeek} disabled={isLoading} class="slds-m-left_x-small"></lightning-button>
             <span class="pick-label slds-m-left_small">Week ending</span>
             <lightning-input type="date" label="Week ending (Saturday)" variant="label-hidden" value={weekEnd} onchange={handleDatePick} class="date-pick slds-m-left_x-small"></lightning-input>
-            <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh" title="Refresh" onclick={handleRefresh} disabled={isLoading} class="slds-m-left_x-small"></lightning-button-icon>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Reload" title="Reload" onclick={handleRefresh} disabled={isLoading} class="slds-m-left_x-small"></lightning-button-icon>
         </div>
 
         <div class="slds-p-horizontal_small body">
@@ -20,9 +20,17 @@
                     <lightning-button variant="base" label={expandAllLabel} onclick={toggleAll} class="expand-all"></lightning-button>
                 </template>
             </div>
+            <template lwc:if={asOfLabel}>
+                <p class="as-of slds-text-body_small slds-text-color_weak">
+                    {asOfLabel}
+                    <template lwc:if={isStale}>
+                        <span class="stale"> · The latest update from UKG failed, so this may be out of date.</span>
+                    </template>
+                </p>
+            </template>
 
             <template lwc:if={isLoading}>
-                <lightning-spinner alternative-text="Loading time from UKG" size="small"></lightning-spinner>
+                <lightning-spinner alternative-text="Loading time" size="small"></lightning-spinner>
             </template>
 
             <template lwc:if={error}>
@@ -31,6 +39,13 @@
 
             <template lwc:if={showNoUkgId}>
                 <p class="slds-text-color_weak">This contact has no UKG ID, so there is no time to show.</p>
+            </template>
+
+            <template lwc:if={notCached}>
+                <div class="not-cached">
+                    <p class="slds-text-color_weak">{notCachedMessage}</p>
+                    <lightning-button label="Load from UKG" icon-name="utility:download" onclick={handleLoadLive} disabled={isLoading} class="slds-m-top_x-small"></lightning-button>
+                </div>
             </template>
 
             <template lwc:if={showEmpty}>
